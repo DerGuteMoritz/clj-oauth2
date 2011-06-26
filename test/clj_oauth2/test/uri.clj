@@ -3,32 +3,27 @@
         [clj-oauth2.uri])
   (:import [java.net URI]))
 
+(describe parse-uri
+  (given [uri (parse-uri "http://example.com/somewhere")]
+    (it "parses an URI string into a hash-map of its components"
+      (and (= (:scheme uri) "http")
+           (= (:host uri) "example.com")
+           (= (:path uri) "/somewhere"))))
+  (it "decodes query strings as application/x-www-form-urlencoded by default"
+    (= {:foo "bar" :baz "qux"} (:query (parse-uri "?foo=bar&baz=qux"))))
+  (it "accepts a second argument for toggling application/x-www-form-urlencoded decoding"
+    (= "foo=bar&baz=qux" (:query (parse-uri "?foo=bar&baz=qux" false)))))
+
+
 (describe make-uri
-  (it "returns a java.net.URI instance"
-    (instance? URI (make-uri "")))
-  (it "returns URI instances unchanged"
-    (let [uri (URI. "/foo")]
-      (= uri (make-uri uri))))
-  (it "can construct a URI from a map"
-    (= (URI. "http://foo@localhost:8080/bar")
-       (make-uri {:host "localhost"
-                  :port 8080
-                  :scheme "http"
+  (it "turns a hash-map into a URI"
+    (= (URI. "ssh://hey@foo:99/bar?baz=qux&qux=quux")
+       (make-uri {:scheme "ssh"
+                  :user-info "hey"
+                  :host "foo"
+                  :port 99
                   :path "/bar"
-                  :user-info "foo"})))
-  (it "can parse strings into URI instance"
-    (= (URI. "https://example.com/")
-       (make-uri "https://example.com/"))))
-
-
-(describe update-uri
-  (given [uri (make-uri "http://example.com/foo/")]
-    (it "replaces or adds URI parts given as a map"
-      (= (URI. "https://example.com:8090/bar")
-         (update-uri uri {:scheme "https" :path "/bar" :port 8090})))
-    (it "resolves another URI instance against the given one"
-      (= (URI. "http://example.com/foo/bar")
-         (update-uri uri (make-uri "bar"))))
-    (it "does the same when a string is given"
-      (= (URI. "http://example.com/bar")
-         (update-uri uri "/bar")))))
+                  :query "baz=qux&qux=quux"})))
+  (it "application/x-www-form-urlencodes query parameters when they are given as a hash-map"
+    (= (URI. "?foo=123&bar=baz")
+       (make-uri {:query {:foo 123 :bar "baz"}}))))
