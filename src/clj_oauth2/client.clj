@@ -6,16 +6,18 @@
   (:require [clj-http.client :as http]
             [clojure.string :as str]))
 
-(defn make-request [endpoint]
-  (let [uri (parse-uri (:authorization-uri endpoint))
-        uri (assoc-in uri [:query :response_type] "code")
-        uri (if (:state endpoint)
-              (assoc-in uri [:query :state] (:state endpoint))
-              uri)
-        uri (if (:scope endpoint)
-              (assoc-in uri [:query :scope]
-                        (str/join " " (:scope endpoint)))
-              uri)]
-    {:uri (str (make-uri uri))
-     :scope (:scope endpoint)
-     :state (:state endpoint)}))
+(defn make-request
+  ([endpoint & [state]]
+     (let [uri (parse-uri (:authorization-uri endpoint))
+           query (assoc (:query uri)
+                   :client_id (:client-id endpoint)
+                   :client_secret (:client-secret endpoint)
+                   :redirect_uri (:redirect-uri endpoint)
+                   :response_type "code")
+           query (if state (assoc query :state state) query)
+           query (if (:scope endpoint)
+                   (assoc query :scope (str/join " " (:scope endpoint)))
+                   query)]
+       {:uri (str (make-uri (assoc uri :query query)))
+        :scope (:scope endpoint)
+        :state state})))
