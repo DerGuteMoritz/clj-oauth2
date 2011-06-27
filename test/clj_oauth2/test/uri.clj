@@ -1,6 +1,6 @@
 (ns clj-oauth2.test.uri
-  (:use [lazytest.describe]
-        [clj-oauth2.uri])
+  (:use [clj-oauth2.uri]
+        [lazytest.describe])
   (:import [java.net URI]))
 
 (describe parse-uri
