@@ -45,7 +45,6 @@
            (= (:path uri) "/auth")
            (= (:query uri) {:response_type "code"
                             :client_id "foo"
-                            :client_secret "bar"
                             :redirect_uri "http://my.host/cb"
                             :scope "foo bar"
                             :state "bazqux"})))

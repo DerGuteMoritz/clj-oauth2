@@ -11,7 +11,6 @@
   (let [uri (parse-uri (:authorization-uri endpoint))
         query (assoc (:query uri)
                 :client_id (:client-id endpoint)
-                :client_secret (:client-secret endpoint)
                 :redirect_uri (:redirect-uri endpoint)
                 :response_type "code")
         query (if state (assoc query :state state) query)
