@@ -14,10 +14,10 @@
   [arg]
   (if (map? arg)
     (str/join \& (map #(str/join \= (map url-encode %)) arg))
-    (URLEncoder/encode (as-str arg) "ASCII")))
+    (URLEncoder/encode (as-str arg) "UTF-8")))
 
 (defn url-decode [str]
-  (URLDecoder/decode str "ASCII"))
+  (URLDecoder/decode str "UTF-8"))
 
 (defn form-url-decode [str]
   (into {}
