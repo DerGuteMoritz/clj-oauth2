@@ -55,7 +55,8 @@
                            {:access_token access-token
                             :token_type token-type
                             :expires_in expires-in
-                            :refresh_token refresh-token}))}))
+                            :refresh_token refresh-token}))}
+        (:status 400 :body "error")))
     [:get "/some-resource"]
     (handle-protected-resource req "that's gold jerry!")
     [:get "/get"]
@@ -98,10 +99,15 @@
          "sesame"))
     (it "fails when state differs from expected state"
       (handler-case :type
+        (handle :oauth2-state-mismatch true)
         (get-access-token endpoint-auth-code
                           {:code "abracadabra" :state "foo"}
-                          "bar")
-        (handle :state-mismatch true)))))
+                          "bar")))
+    (it "fails when an error response is passed in"
+      (handler-case :type
+        (handle :oauth2-error true)
+        (get-access-token endpoint-auth-code
+                          {:error "something went wrong"})))))
 
 (describe "token usage"
   (it "should grant access to protected resources"
