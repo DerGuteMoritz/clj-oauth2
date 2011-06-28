@@ -26,4 +26,7 @@
                   :query "baz=qux&qux=quux"})))
   (it "application/x-www-form-urlencodes query parameters when they are given as a hash-map"
     (= (URI. "?foo=123&bar=baz")
-       (make-uri {:query {:foo 123 :bar "baz"}}))))
+       (make-uri {:query {:foo 123 :bar "baz"}})))
+  (it "turns vector values into multiple params"
+    (= (URI. "?foo=123&foo=456")
+       (make-uri {:query {:foo [123 456]}}))))

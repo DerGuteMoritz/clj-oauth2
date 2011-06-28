@@ -65,7 +65,7 @@
                   (reduce (fn [u [k v]]
                             (. uri queryParam
                                (name k)
-                               (to-array [v])))
+                               (to-array (if (vector? v) v [v]))))
                           uri
                           (:query arg))
                   :else uri)]
