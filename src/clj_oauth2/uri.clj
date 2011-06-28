@@ -50,13 +50,14 @@ representation of argument, either a string or map."
          (assoc uri :query (form-url-decode (:query uri)))
          uri))))
 
-(defn make-uri [{:keys [scheme user-info host port path fragment query]}]
+(defn make-uri [{:keys [scheme user-info host port path fragment query]
+                 :or {port -1 path ""}}]
   (let [uri (.. (UriBuilder/fromUri "")
                 (scheme scheme)
                 (userInfo user-info)
                 (host host)
-                (port (or port -1))
-                (path (or path ""))
+                (port port)
+                (path path)
                 (fragment fragment))
         uri (cond (string? query)
                   (. uri replaceQuery query)
