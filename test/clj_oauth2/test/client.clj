@@ -47,6 +47,7 @@
                (= (:client_secret body) (:client-secret endpoint))
                (= (:redirect_uri body) (:redirect-uri endpoint)))
         {:status 200
+         :headers {"Content-Type" "application/json; charset=UTF-8"}
          :body (json-str (let [{:keys [access-token
                                        token-type
                                        expires-in
@@ -56,7 +57,7 @@
                             :token_type token-type
                             :expires_in expires-in
                             :refresh_token refresh-token}))}
-        (:status 400 :body "error")))
+        {:status 400 :body "error"}))
     [:get "/some-resource"]
     (handle-protected-resource req "that's gold jerry!")
     [:get "/get"]
