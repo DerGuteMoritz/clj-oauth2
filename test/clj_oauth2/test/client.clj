@@ -92,7 +92,9 @@
 
   (testing get-access-token
     (it "returns an access token hash-map on success"
-      (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra" :state "foo"} "foo"))
+      (= (:access-token (get-access-token endpoint-auth-code
+                                          {:code "abracadabra" :state "foo"}
+                                          {:state "foo"}))
          "sesame"))
     (it "returns an access token when no state is given"
       (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra"}))
@@ -102,13 +104,15 @@
         (handle :oauth2-state-mismatch true)
         (get-access-token endpoint-auth-code
                           {:code "abracadabra" :state "foo"}
-                          "bar")))
+                          {:state "bar"})
+        false))
     (it "fails when an error response is passed in"
       (handler-case :type
         (handle :oauth2-error (= (:oauth2-error *condition*) "honest_mistake"))
         (get-access-token endpoint-auth-code
                           {:error "honest_mistake"
-                           :error_description "something went wrong"})))))
+                           :error_description "something went wrong"})
+        false))))
 
 (describe "token usage"
   (it "should grant access to protected resources"

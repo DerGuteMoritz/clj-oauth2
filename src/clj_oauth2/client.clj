@@ -37,13 +37,13 @@
 
 (defn get-access-token [{:keys [access-token-uri client-id client-secret redirect-uri]}
                         {:keys [code state error error_description]}
-                        & [expected-state]]
+                        & [{expected-state :state expected-scope :scope}]]
   (cond (string? error)
         (raise :type :oauth2-error
                :oauth2-error error
                :message error_description)
 
-        (and  expected-state (not (= state expected-state)))
+        (and expected-state (not (= state expected-state)))
         (raise :type :oauth2-state-mismatch
                :message (format "Expected state %s but got %s"
                                 state expected-state))
