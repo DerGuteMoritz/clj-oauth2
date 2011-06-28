@@ -46,7 +46,7 @@
                (= (:client_secret body) (:client-secret endpoint))
                (= (:redirect_uri body) (:redirect-uri endpoint)))
         {:status 200
-         :headers {"Content-Type" (str "application/"
+         :headers {"content-type" (str "application/"
                                        (condp = (:query-string req)
                                          "formurlenc" "x-www-form-urlencoded"
                                          nil "json")
@@ -64,6 +64,11 @@
                    :expires_in expires-in
                    :refresh_token refresh-token}))}
         {:status 400 :body "error"}))
+    [:post "/token-error"]
+    {:status 400
+     :headers {"content-type" "application/json"}
+     :body (json-str {:error "unauthorized_client"
+                      :error_description "not good"})}
     [:get "/some-resource"]
     (handle-protected-resource req "that's gold jerry!")
     [:get "/get"]
@@ -122,10 +127,19 @@
         false))
     (it "fails when an error response is passed in"
       (handler-case :type
-        (handle :oauth2-error (= (:oauth2-error *condition*) "honest_mistake"))
+        (handle :oauth2-error (= (:oauth2-error *condition*) "invalid_client"))
         (get-access-token endpoint-auth-code
-                          {:error "honest_mistake"
+                          {:error "invalid_client"
                            :error_description "something went wrong"})
+        false))
+    (it "raises on error response"
+      (handler-case :type
+        (handle :oauth2-error (= (:oauth2-error *condition*) "unauthorized_client"))
+        (get-access-token (assoc endpoint-auth-code
+                            :access-token-uri
+                            "http://localhost:18080/token-error")
+                          {:code "abracadabra" :state "foo"}
+                          {:state "foo"})
         false))))
 
 (describe "token usage"

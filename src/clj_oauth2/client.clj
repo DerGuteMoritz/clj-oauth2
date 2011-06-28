@@ -25,21 +25,32 @@
 
 (defn- request-access-token
   [access-token-uri code client-id client-secret redirect-uri]
-  (let [{:keys [body headers]}
+  (let [{:keys [body headers status]}
         (http/post access-token-uri
                    {:content-type "application/x-www-form-urlencoded"
+                    :throw-exceptions false
                     :body (url-encode
                            {:code code
                             :grant_type "authorization_code"
                             :client_id client-id
                             :client_secret client-secret
                             :redirect_uri redirect-uri})})
-        body (if (.startsWith (headers "content-type") "application/json")
+        content-type (headers "content-type")
+        body (if (or (.startsWith content-type "application/json")
+                     (.startsWith content-type "text/javascript")) ; Facebookism
                (read-json body)
-               ;; assume that it's form-urlencoded when it's not JSON (Facebookism)
-               (form-url-decode body))]
+               (form-url-decode body))  ; Facebookism
+        error (:error body)]
     
-    {:access-token (:access_token body)}))
+    (if error
+      (raise :type :oauth2-error
+             :oauth2-error (if (string? error)
+                             error
+                             (:type error)) ; Facebookism
+             :message (if (string? error)
+                        (:error_description body)
+                        (:message error))) ; Facebookism
+      {:access-token (:access_token body)})))
 
 (defn get-access-token [{:keys [access-token-uri client-id client-secret redirect-uri]}
                         {:keys [code state error error_description]}
