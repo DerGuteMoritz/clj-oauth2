@@ -23,24 +23,29 @@
      :scope scope
      :state state}))
 
+(defn- request-access-token
+  [access-token-uri code client-id client-secret redirect-uri]
+  (let [resp (http/post access-token-uri
+                        {:content-type "application/x-www-form-urlencoded"
+                         :body (url-encode
+                                {:code code
+                                 :grant_type "authorization_code"
+                                 :client_id client-id
+                                 :client_secret client-secret
+                                 :redirect_uri redirect-uri})})]
+    {:access-token (:access_token (read-json (:body resp)))}))
+
 (defn get-access-token [{:keys [access-token-uri client-id client-secret redirect-uri]}
                         {:keys [code state error error_description]}
                         & [expected-state]]
   (cond error
         (raise :type :oauth2-error
-               :internal-type error
+               :oauth2-error error
                :message error_description)
         
         (or (not expected-state) (= state expected-state))
-        (let [resp (http/post access-token-uri
-                              {:content-type "application/x-www-form-urlencoded"
-                               :body (url-encode
-                                      {:code code
-                                       :grant_type "authorization_code"
-                                       :client_id client-id
-                                       :client_secret client-secret
-                                       :redirect_uri redirect-uri})})]
-          {:access-token (:access_token (read-json (:body resp)))})
+        (request-access-token access-token-uri code client-id
+                              client-secret redirect-uri)
         
         :else
         (raise :type :oauth2-state-mismatch

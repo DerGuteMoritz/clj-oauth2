@@ -105,9 +105,10 @@
                           "bar")))
     (it "fails when an error response is passed in"
       (handler-case :type
-        (handle :oauth2-error true)
+        (handle :oauth2-error (= (:oauth2-error *condition*) "honest_mistake"))
         (get-access-token endpoint-auth-code
-                          {:error "something went wrong"})))))
+                          {:error "honest_mistake"
+                           :error_description "something went wrong"})))))
 
 (describe "token usage"
   (it "should grant access to protected resources"
