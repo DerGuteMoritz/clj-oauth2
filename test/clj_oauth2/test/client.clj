@@ -47,16 +47,23 @@
                (= (:client_secret body) (:client-secret endpoint))
                (= (:redirect_uri body) (:redirect-uri endpoint)))
         {:status 200
-         :headers {"Content-Type" "application/json; charset=UTF-8"}
-         :body (json-str (let [{:keys [access-token
-                                       token-type
-                                       expires-in
-                                       refresh-token]}
-                               access-token]
-                           {:access_token access-token
-                            :token_type token-type
-                            :expires_in expires-in
-                            :refresh_token refresh-token}))}
+         :headers {"Content-Type" (str "application/"
+                                       (condp = (:query-string req)
+                                         "formurlenc" "x-www-form-urlencoded"
+                                         nil "json")
+                                       "; charset=UTF-8")}
+         :body ((condp = (:query-string req)
+                  "formurlenc" url-encode
+                  nil json-str)
+                (let [{:keys [access-token
+                              token-type
+                              expires-in
+                              refresh-token]}
+                      access-token]
+                  {:access_token access-token
+                   :token_type token-type
+                   :expires_in expires-in
+                   :refresh_token refresh-token}))}
         {:status 400 :body "error"}))
     [:get "/some-resource"]
     (handle-protected-resource req "that's gold jerry!")
@@ -94,6 +101,13 @@
   (testing get-access-token
     (it "returns an access token hash-map on success"
       (= (:access-token (get-access-token endpoint-auth-code
+                                          {:code "abracadabra" :state "foo"}
+                                          {:state "foo"}))
+         "sesame"))
+    (it "also works with application/x-www-form-urlencoded responses (as produced by Facebook)"
+      (= (:access-token (get-access-token (assoc endpoint-auth-code :access-token-uri
+                                                 (str (:access-token-uri endpoint-auth-code)
+                                                      "?formurlenc"))
                                           {:code "abracadabra" :state "foo"}
                                           {:state "foo"}))
          "sesame"))
