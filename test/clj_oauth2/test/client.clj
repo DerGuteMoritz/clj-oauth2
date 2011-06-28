@@ -3,7 +3,8 @@
         [clj-oauth2.uri]
         [lazytest.describe]
         [clojure.contrib.json :only [json-str]]
-        [clojure.contrib.pprint :only [pprint]])
+        [clojure.contrib.pprint :only [pprint]]
+        [clojure.contrib.condition]) 
   (:require [ring.adapter.jetty :as ring]))
 
 (def endpoint
@@ -60,6 +61,15 @@
 
   (testing get-access-token
     (it "returns an access token hash-map on success"
+      (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra" :state "foo"} "foo"))
+         "sesame"))
+    (it "returns an access token when no state is given"
       (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra"}))
-         "sesame"))))
+         "sesame"))
+    (it "fails when state differs from expected state"
+      (handler-case :type
+        (get-access-token endpoint-auth-code
+                          {:code "abracadabra" :state "foo"}
+                          "bar")
+        (handle :state-mismatch true)))))
 

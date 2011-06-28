@@ -2,7 +2,8 @@
   (:use [clj-http.client :only [wrap-request]]
         [clojure.contrib.json :only [read-json]]
         [clojure.contrib.java-utils]
-        [clj-oauth2.uri])
+        [clj-oauth2.uri]
+        [clojure.contrib.condition])
   (:require [clj-http.client :as http]
             [clojure.string :as str]))
 
@@ -23,12 +24,18 @@
      :state state}))
 
 (defn get-access-token [{:keys [access-token-uri client-id client-secret redirect-uri]}
-                        {:keys [code]}]
-  (let [resp (http/post access-token-uri
-                        {:body (url-encode
-                                {:code code
-                                 :grant_type "authorization_code"
-                                 :client_id client-id
-                                 :client_secret client-secret
-                                 :redirect_uri redirect-uri})})]
-    {:access-token (:access_token (read-json (:body resp)))}))
+                        {:keys [code state]}
+                        & [expected-state]]
+  (if (or (not expected-state) (= state expected-state))
+    (let [resp (http/post access-token-uri
+                          {:body (url-encode
+                                  {:code code
+                                   :grant_type "authorization_code"
+                                   :client_id client-id
+                                   :client_secret client-secret
+                                   :redirect_uri redirect-uri})})]
+      {:access-token (:access_token (read-json (:body resp)))})
+    (raise :type :state-mismatch
+           :message (format "Expected state %s but got %s"
+                            state expected-state))))
+
