@@ -6,7 +6,7 @@
   (:require [clj-http.client :as http]
             [clojure.string :as str]))
 
-(defn make-request [endpoint & [state]]
+(defn make-auth-request [endpoint & [state]]
   (let [uri (parse-uri (:authorization-uri endpoint))
         query (assoc (:query uri)
                 :client_id (:client-id endpoint)

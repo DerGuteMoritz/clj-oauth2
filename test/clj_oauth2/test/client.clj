@@ -42,7 +42,7 @@
   (future (ring/run-jetty handler {:port 18080})))
 
 (describe "grant-type authorization-code"
-  (given [req (make-request endpoint-auth-code "bazqux")
+  (given [req (make-auth-request endpoint-auth-code "bazqux")
           uri (parse-uri (:uri req))]
     (it "constructs a uri for the authorization redirect"
       (and (= (:scheme uri) "http")
