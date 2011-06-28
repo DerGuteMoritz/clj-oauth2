@@ -8,10 +8,9 @@
            [java.lang IllegalArgumentException]))
 
 ;; taken from https://github.com/marktriggs/clojure-http-client/blob/master/src/clojure/http/client.clj
-;; modified to use ASCII instead of UTF-8
 (defn url-encode
-  "Wrapper around java.net.URLEncoder returning an ASCII URL encoded
- representation of argument, either a string or map."
+  "Wrapper around java.net.URLEncoder returning an UTF-8 URL encoded
+representation of argument, either a string or map."
   [arg]
   (if (map? arg)
     (str/join \& (map (fn [[k v]]
