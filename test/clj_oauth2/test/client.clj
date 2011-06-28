@@ -25,7 +25,13 @@
   (condp = [(:request-method req) (:uri req)]
     [:post "/token"]
     (let [body (form-url-decode (slurp (:body req)))]
-      (if (= (:code body) "abracadabra")
+      (pprint body)
+      (pprint endpoint)
+      (if (and (= (:code body) "abracadabra")
+               (= (:grant_type body) "authorization_code")
+               (= (:client_id body) (:client-id endpoint))
+               (= (:client_secret body) (:client-secret endpoint))
+               (= (:redirect_uri body) (:redirect-uri endpoint)))
         {:status 200
          :body (json-str {:access_token "sesame"
                           :token_type "spell"
