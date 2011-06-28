@@ -28,16 +28,15 @@
 
 (defn handle-protected-resource [req grant & [deny]]
   (let [query (form-url-decode (:query-string req))]
-    (pprint query)
     (if (= (:access_token query) (:access-token access-token))
       {:status 200 :body grant}
       {:status 400 :body (or deny "nope")})))
 
 ;; shamelessly copied from clj-http tests
 (defn handler [req]
-  (pprint req)
-  (println)
-  (println)
+  ;; (pprint req)
+  ;; (println)
+  ;; (println)
   (condp = [(:request-method req) (:uri req)]
     [:post "/token"]
     (let [body (form-url-decode (slurp (:body req)))]
