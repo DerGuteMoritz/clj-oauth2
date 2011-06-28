@@ -28,7 +28,8 @@
                         & [expected-state]]
   (if (or (not expected-state) (= state expected-state))
     (let [resp (http/post access-token-uri
-                          {:body (url-encode
+                          {:content-type "application/x-www-form-urlencoded"
+                           :body (url-encode
                                   {:code code
                                    :grant_type "authorization_code"
                                    :client_id client-id
