@@ -43,11 +43,6 @@
                :oauth2-error error
                :message error_description)
 
-        (map? error)
-        (raise :type :oauth2-error
-               :oauth2-error (:type error)
-               :message (:message error))
-        
         (and  expected-state (not (= state expected-state)))
         (raise :type :oauth2-state-mismatch
                :message (format "Expected state %s but got %s"
