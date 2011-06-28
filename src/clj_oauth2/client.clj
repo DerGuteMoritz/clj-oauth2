@@ -2,8 +2,7 @@
   (:use [clj-http.client :only [wrap-request]]
         [clojure.contrib.json :only [read-json]]
         [clojure.contrib.java-utils]
-        [clj-oauth2.uri]
-        [clojure.contrib.duck-streams :only [to-byte-array]])
+        [clj-oauth2.uri])
   (:require [clj-http.client :as http]
             [clojure.string :as str]))
 

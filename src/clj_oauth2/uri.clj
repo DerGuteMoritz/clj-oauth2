@@ -4,6 +4,7 @@
   (:require [clojure.string :as str]
             [clj-http.client :only parse-url :as http])
   (:import [java.net URI URLEncoder URLDecoder]
+           [javax.ws.rs.core UriBuilder]
            [java.lang IllegalArgumentException]))
 
 ;; taken from https://github.com/marktriggs/clojure-http-client/blob/master/src/clojure/http/client.clj
@@ -13,8 +14,12 @@
  representation of argument, either a string or map."
   [arg]
   (if (map? arg)
-    (str/join \& (map #(str/join \= (map url-encode %)) arg))
-    (URLEncoder/encode (as-str arg) "UTF-8")))
+    (str/join \& (map (fn [[k v]]
+                        (str (url-encode (name k))
+                             \=
+                             (url-encode v)))
+                      arg))
+    (URLEncoder/encode (str arg) "UTF-8")))
 
 (defn url-decode [str]
   (URLDecoder/decode str "UTF-8"))
@@ -47,12 +52,21 @@
          uri))))
 
 (defn make-uri [arg]
-  (URI. (:scheme arg)
-        (:user-info arg)
-        (:host arg)
-        (or (:port arg) -1)
-        (:path arg)
-        (if (string? (:query arg))
-          (:query arg)
-          (url-encode (:query arg)))
-        (:fragment arg)))
+  (let [uri (.. (UriBuilder/fromUri "")
+                (scheme (:scheme arg))
+                (userInfo (:user-info arg))
+                (host (:host arg))
+                (port (or (:port arg) -1))
+                (path (or (:path arg) ""))
+                (fragment (:fragment arg)))
+        uri (cond (string? (:query arg))
+                  (. uri replaceQuery (:query arg))
+                  (map? (:query arg))
+                  (reduce (fn [u [k v]]
+                            (. uri queryParam
+                               (name k)
+                               (to-array [v])))
+                          uri
+                          (:query arg))
+                  :else uri)]
+    (. uri build (to-array []))))
