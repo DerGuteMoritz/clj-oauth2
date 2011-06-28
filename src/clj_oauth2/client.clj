@@ -40,3 +40,21 @@
            :message (format "Expected state %s but got %s"
                             state expected-state))))
 
+
+(defn request [{:keys [access-token]} req]
+  (http/request (assoc-in req
+                          [:query-params :access_token]
+                          access-token)))
+
+(defmacro def-request-shortcut-fn [method]
+  (let [method-key (keyword method)]
+    `(defn ~method [token# url# & [req#]]
+       (request token# (merge req#
+                              {:method ~method-key
+                               :url url#})))))
+
+(def-request-shortcut-fn get)
+(def-request-shortcut-fn post)
+(def-request-shortcut-fn put)
+(def-request-shortcut-fn delete)
+(def-request-shortcut-fn head)

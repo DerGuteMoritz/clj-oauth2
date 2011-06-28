@@ -15,29 +15,59 @@
    :redirect-uri "http://my.host/cb"
    :scope ["foo" "bar"]})
 
+(def access-token
+  {:access-token "sesame"
+   :token-type "spell"
+   :expires-in 120
+   :refresh-token "new-foo"})
+
+
 (def endpoint-auth-code
   (assoc endpoint
     :grant-type 'authorization-code))
 
+(defn handle-protected-resource [req grant & [deny]]
+  (let [query (form-url-decode (:query-string req))]
+    (pprint query)
+    (if (= (:access_token query) (:access-token access-token))
+      {:status 200 :body grant}
+      {:status 400 :body (or deny "nope")})))
+
 ;; shamelessly copied from clj-http tests
 (defn handler [req]
   (pprint req)
-  (println) (println)
+  (println)
+  (println)
   (condp = [(:request-method req) (:uri req)]
     [:post "/token"]
     (let [body (form-url-decode (slurp (:body req)))]
-      (pprint body)
-      (pprint endpoint)
       (if (and (= (:code body) "abracadabra")
                (= (:grant_type body) "authorization_code")
                (= (:client_id body) (:client-id endpoint))
                (= (:client_secret body) (:client-secret endpoint))
                (= (:redirect_uri body) (:redirect-uri endpoint)))
         {:status 200
-         :body (json-str {:access_token "sesame"
-                          :token_type "spell"
-                          :expires_in 120
-                          :refresh_token "new-foo"})}))))
+         :body (json-str (let [{:keys [access-token
+                                       token-type
+                                       expires-in
+                                       refresh-token]}
+                               access-token]
+                           {:access_token access-token
+                            :token_type token-type
+                            :expires_in expires-in
+                            :refresh_token refresh-token}))}))
+    [:get "/some-resource"]
+    (handle-protected-resource req "that's gold jerry!")
+    [:get "/get"]
+    (handle-protected-resource req "get")
+    [:post "/post"]
+    (handle-protected-resource req "post")
+    [:put "/put"]
+    (handle-protected-resource req "put")
+    [:delete "/delete"]
+    (handle-protected-resource req "delete")
+    [:head "/head"]
+    (handle-protected-resource req "head")))
 
 (defonce server
   (future (ring/run-jetty handler {:port 18080})))
@@ -73,3 +103,21 @@
                           "bar")
         (handle :state-mismatch true)))))
 
+(describe "token usage"
+  (it "should grant access to protected resources"
+    (= "that's gold jerry!"
+       (:body (request access-token
+                       {:method :get
+                        :url "http://localhost:18080/some-resource"}))))
+  (it "should deny access to protected resource given an invalid access token"
+    (= "nope"
+       (:body (request {} {:method :get
+                           :url "http://localhost:18080/some-resource"
+                           :throw-exceptions false}))))
+
+  (testing "pre-defined shortcut request functions"
+    (it (= "get" (:body (get access-token "http://localhost:18080/get"))))
+    (it (= "post" (:body (post access-token "http://localhost:18080/post"))))
+    (it (= "put" (:body (put access-token "http://localhost:18080/put"))))
+    (it (= "delete" (:body (delete access-token "http://localhost:18080/delete"))))
+    (it (= 200 (:status (head access-token "http://localhost:18080/head"))))))
