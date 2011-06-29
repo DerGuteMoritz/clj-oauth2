@@ -16,8 +16,8 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
     (def facebook-oauth2
       {:client-id "1234567890"
-       :client-secret "098765431"
-       :redirect-uri "http://example.com/facebook-callback"
+       :client-secret "0987654321"
+       :redirect-uri "http://example.com/oauth2-callback"
        :scope ["user_photos" "friends_photos"]
        :authorization-uri "https://graph.facebook.com/oauth/authorize"
        :access-token-uri "https://graph.facebook.com/oauth/access_token"
@@ -25,7 +25,7 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
     ;; redirect user to (:uri auth-req) afterwards
     (def auth-req
-      (oauth2/make-request facebook-oauth2 "some-csrf-protection-string"))
+      (oauth2/make-auth-request facebook-oauth2 "some-csrf-protection-string"))
 
 
     ;; auth-resp contains the query parameters added to the redirect-uri
