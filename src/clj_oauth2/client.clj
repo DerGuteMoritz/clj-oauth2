@@ -24,7 +24,7 @@
      :state state}))
 
 (defn- request-access-token
-  [access-token-uri code client-id client-secret redirect-uri]
+  [{:keys [access-token-uri client-id client-secret redirect-uri access-query-param]} code]
   (let [{:keys [body headers status]}
         (http/post access-token-uri
                    {:content-type "application/x-www-form-urlencoded"
@@ -50,9 +50,10 @@
              :message (if (string? error)
                         (:error_description body)
                         (:message error))) ; Facebookism
-      {:access-token (:access_token body)})))
+      {:access-token (:access_token body)
+       :query-param access-query-param})))
 
-(defn get-access-token [{:keys [access-token-uri client-id client-secret redirect-uri]}
+(defn get-access-token [endpoint
                         {:keys [code state error error_description]}
                         & [{expected-state :state expected-scope :scope}]]
   (cond (string? error)
@@ -66,13 +67,15 @@
                                 state expected-state))
         
         :else
-        (request-access-token access-token-uri code client-id
-                              client-secret redirect-uri)))
+        (request-access-token endpoint code)))
 
 
-(defn request [{:keys [access-token]} req]
+(defn request [{:keys [access-token query-param]} req]
+  (when-not query-param
+    (raise :type :argument-error
+           :message ":query-param missing"))
   (http/request (assoc-in req
-                          [:query-params :access_token]
+                          [:query-params query-param]
                           access-token)))
 
 (defmacro def-request-shortcut-fn [method]

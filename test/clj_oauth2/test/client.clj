@@ -13,10 +13,12 @@
    :client-id "foo"
    :client-secret "bar"
    :redirect-uri "http://my.host/cb"
+   :access-query-param :access_token
    :scope ["foo" "bar"]})
 
 (def access-token
   {:access-token "sesame"
+   :query-param :access_token
    :token-type "spell"
    :expires-in 120
    :refresh-token "new-foo"})
@@ -150,9 +152,10 @@
                         :url "http://localhost:18080/some-resource"}))))
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
-       (:body (request {} {:method :get
-                           :url "http://localhost:18080/some-resource"
-                           :throw-exceptions false}))))
+       (:body (request {:query-param :access_token}
+                       {:method :get
+                        :url "http://localhost:18080/some-resource"
+                        :throw-exceptions false}))))
 
   (testing "pre-defined shortcut request functions"
     (it (= "get" (:body (get access-token "http://localhost:18080/get"))))
