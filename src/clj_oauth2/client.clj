@@ -83,8 +83,8 @@
           (throw (OAuth2Exception. "Missing :oauth2 params"))
           (client req))))))
 
-(defn request [req]
-  ((wrap-oauth2 http/request) req))
+(def request
+  (wrap-oauth2 http/request))
 
 (defmacro def-request-shortcut-fn [method]
   (let [method-key (keyword method)]
