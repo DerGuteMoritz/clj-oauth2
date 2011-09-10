@@ -12,4 +12,6 @@
                      [com.stuartsierra/lazytest "1.1.2"]]
 
   :repositories {"stuartsierra-releases" "http://stuartsierra.com/maven2"
-                 "java" "http://download.java.net/maven/2"})
+                 "java" "http://download.java.net/maven/2"}
+
+  :aot [clj-oauth2.OAuth2Exception clj-oauth2.OAuth2StateMismatchException])
