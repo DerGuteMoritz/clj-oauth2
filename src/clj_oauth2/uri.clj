@@ -60,7 +60,7 @@ representation of argument, either a string or map."
   (let [uri (format* "%2$s://%1$s" "" scheme)
         uri (format* "%s%s@" uri user-info)
         uri (format* "%s%s" uri host)
-        uri (format* "%s:%d" uri port)
+        uri (format* "%s:%d" uri (and (not (= -1 port)) port))
         uri (format* "%s%s" uri path)
         uri (format* "%s?%s" uri (and query (if (map? query)
                                               (url-encode query)
