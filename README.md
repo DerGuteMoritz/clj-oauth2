@@ -29,13 +29,13 @@ clj-oauth2 wraps clj-http for accessing protected resources.
       (oauth2/make-auth-request facebook-oauth2 "some-csrf-protection-string"))
 
 
-    ;; auth-resp contains the query parameters added to the redirect-uri
-    ;; by the authorization server
+    ;; auth-resp is a map of the query parameters added to the
+    ;; redirect-uri by the authorization server
     (def access-token
       (oauth2/get-access-token facebook-oauth2 auth-resp auth-req))
 
     ;; access protected resource
-    (oauth2/get access-token "https://graph.facebook.com/me")
+    (oauth2/get "https://graph.facebook.com/me" {:oauth2 access-token})
 
 ## License
 
