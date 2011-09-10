@@ -3,9 +3,10 @@
         [clojure.contrib.json :only [read-json]]
         [clojure.contrib.java-utils]
         [clj-oauth2.uri]
-        [clojure.contrib.condition])
+        [clojure.pprint])
   (:require [clj-http.client :as http]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
 
 (defn make-auth-request
   [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
@@ -43,28 +44,28 @@
         error (:error body)]
     
     (if error
-      (raise :type :oauth2-error
-             :oauth2-error (if (string? error)
-                             error
-                             (:type error)) ; Facebookism
-             :message (if (string? error)
-                        (:error_description body)
-                        (:message error))) ; Facebookism
+      (throw (OAuth2Exception. (if (string? error)
+                                 (:error_description body)
+                                 (:message error)) ; Facebookism
+                               (if (string? error)
+                                 error
+                                 (:type error)))) ; Facebookism 
       {:access-token (:access_token body)
        :query-param access-query-param})))
 
 (defn get-access-token [endpoint
-                        {:keys [code state error error_description]}
+                        {error-description :error_description
+                         :keys [code state error]}
                         & [{expected-state :state expected-scope :scope}]]
   (cond (string? error)
-        (raise :type :oauth2-error
-               :oauth2-error error
-               :message error_description)
+        (throw (OAuth2Exception. error-description error))
 
         (and expected-state (not (= state expected-state)))
-        (raise :type :oauth2-state-mismatch
-               :message (format "Expected state %s but got %s"
-                                state expected-state))
+        (throw (OAuth2StateMismatchException.
+                (format "Expected state %s but got %s"
+                        state expected-state)
+                state
+                expected-state))
         
         :else
         (request-access-token endpoint code)))

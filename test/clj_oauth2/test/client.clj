@@ -2,10 +2,22 @@
   (:use [clj-oauth2.client]
         [clj-oauth2.uri]
         [lazytest.describe]
+        [lazytest.expect :only (expect)]
         [clojure.contrib.json :only [json-str]]
-        [clojure.contrib.pprint :only [pprint]]
-        [clojure.contrib.condition]) 
-  (:require [ring.adapter.jetty :as ring]))
+        [clojure.contrib.pprint :only [pprint]]) 
+  (:require [ring.adapter.jetty :as ring])
+  (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
+
+
+(defn throws?
+  [c f & [e]]
+  (try (f) false
+       (catch Throwable t
+         (if (instance? c t)
+           (do (when e (e t)) true)
+           (throw t)))))
+
+
 
 (def endpoint
   {:authorization-uri "http://localhost:18080/auth"
@@ -123,28 +135,29 @@
       (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra"}))
          "sesame"))
     (it "fails when state differs from expected state"
-      (handler-case :type
-        (handle :oauth2-state-mismatch true)
-        (get-access-token endpoint-auth-code
-                          {:code "abracadabra" :state "foo"}
-                          {:state "bar"})
-        false))
+      (throws? OAuth2StateMismatchException
+               (fn []
+                 (get-access-token endpoint-auth-code
+                                   {:code "abracadabra" :state "foo"}
+                                   {:state "bar"}))))
     (it "fails when an error response is passed in"
-      (handler-case :type
-        (handle :oauth2-error (= (:oauth2-error *condition*) "invalid_client"))
-        (get-access-token endpoint-auth-code
-                          {:error "invalid_client"
-                           :error_description "something went wrong"})
-        false))
+      (throws? OAuth2Exception
+               (fn []
+                 (get-access-token endpoint-auth-code
+                                   {:error "invalid_client"
+                                    :error_description "something went wrong"}))
+               (fn [e]
+                 (expect (= ["something went wrong" "invalid_client"] @e)))))
     (it "raises on error response"
-      (handler-case :type
-        (handle :oauth2-error (= (:oauth2-error *condition*) "unauthorized_client"))
-        (get-access-token (assoc endpoint-auth-code
-                            :access-token-uri
-                            "http://localhost:18080/token-error")
-                          {:code "abracadabra" :state "foo"}
-                          {:state "foo"})
-        false))))
+      (throws? OAuth2Exception
+               (fn []
+                 (get-access-token (assoc endpoint-auth-code
+                                     :access-token-uri
+                                     "http://localhost:18080/token-error")
+                                   {:code "abracadabra" :state "foo"}
+                                   {:state "foo"}))
+               (fn [e]
+                 (expect (= ["not good" "unauthorized_client"] @e)))))))
 
 (describe "token usage"
   (it "should grant access to protected resources"
