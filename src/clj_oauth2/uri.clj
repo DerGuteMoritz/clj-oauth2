@@ -1,11 +1,18 @@
 (ns clj-oauth2.uri
-  (:use [clojure.contrib.java-utils]
-        [clojure.pprint :only (write)])
   (:require [clojure.string :as str]
             [clj-http.client :only parse-url :as http])
-  (:import [java.net URI URLEncoder URLDecoder]
-           [javax.ws.rs.core UriBuilder]
-           [java.lang IllegalArgumentException]))
+  (:import [java.net URI URLEncoder URLDecoder]))
+
+(def url-encode)
+
+(defn form-url-encode [arg]
+  (str/join \& (map (fn [[k v]]
+                      (if (vector? v)
+                        (form-url-encode (map (fn [v] [k v]) v))
+                        (str (url-encode (name k))
+                             \=
+                             (url-encode v))))
+                    arg)))
 
 ;; taken from https://github.com/marktriggs/clojure-http-client/blob/master/src/clojure/http/client.clj
 (defn url-encode
@@ -13,11 +20,7 @@
 representation of argument, either a string or map."
   [arg]
   (if (map? arg)
-    (str/join \& (map (fn [[k v]]
-                        (str (url-encode (name k))
-                             \=
-                             (url-encode v)))
-                      arg))
+    (form-url-encode arg)
     (URLEncoder/encode (str arg) "UTF-8")))
 
 (defn url-decode [str]
@@ -50,23 +53,17 @@ representation of argument, either a string or map."
          (assoc uri :query (form-url-decode (:query uri)))
          uri))))
 
-(defn make-uri [{:keys [scheme user-info host port path fragment query]
-                 :or {port -1 path ""}}]
-  (let [uri (.. (UriBuilder/fromUri "")
-                (scheme scheme)
-                (userInfo user-info)
-                (host host)
-                (port port)
-                (path path)
-                (fragment fragment))
-        uri (cond (string? query)
-                  (. uri replaceQuery query)
-                  (map? query)
-                  (reduce (fn [u [k v]]
-                            (. uri queryParam
-                               (name k)
-                               (to-array (if (vector? v) v [v]))))
-                          uri
-                          query)
-                  :else uri)]
-    (. uri build (to-array []))))
+(defn format* [str a b]
+  (if b (format str a b) a))
+
+(defn make-uri [{:keys [scheme user-info host port path fragment query]}]
+  (let [uri (format* "%2$s://%1$s" "" scheme)
+        uri (format* "%s%s@" uri user-info)
+        uri (format* "%s%s" uri host)
+        uri (format* "%s:%d" uri port)
+        uri (format* "%s%s" uri path)
+        uri (format* "%s?%s" uri (and query (if (map? query)
+                                              (url-encode query)
+                                              query)))
+        uri (format* "%s#%s" uri fragment)]
+    (URI. uri)))
