@@ -73,6 +73,8 @@
                       :error_description "not good"})}
     [:get "/some-resource"]
     (handle-protected-resource req "that's gold jerry!")
+    [:get "/query-echo"]
+    (handle-protected-resource req (:query-string req))
     [:get "/get"]
     (handle-protected-resource req "get")
     [:post "/post"]
@@ -149,7 +151,14 @@
     (= "that's gold jerry!"
        (:body (request {:method :get
                         :oauth2 access-token
-                        :url "http://localhost:18080/some-resource?foo"}))))
+                        :url "http://localhost:18080/some-resource"}))))
+
+  (it "should preserve the url's query string when adding the access-token"
+    (= {:foo "123" (:query-param access-token) (:access-token access-token)}
+       (form-url-decode (:body (request {:method :get
+                                         :oauth2 access-token
+                                         :query-params {:foo "123"}
+                                         :url "http://localhost:18080/query-echo"})))))
 
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
