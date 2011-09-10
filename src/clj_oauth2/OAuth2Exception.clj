@@ -4,10 +4,14 @@
    :implements [clojure.lang.IDeref]
    :init init
    :state state
-   :constructors {[String String] [String]}))
+   :constructors {[String String] [String]
+                  [String] [String]}))
 
-(defn -init [message type]
-  [[message] [message type]])
+(defn -init
+  ([message type]
+     [[message] [message type]])
+  ([message]
+     [[message] [message false]]))
 
 (defn -deref
   [this]

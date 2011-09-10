@@ -176,7 +176,7 @@
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
        (:body (request {:method :get
-                        :oauth2 {:query-param :access_token}
+                        :oauth2 (assoc access-token :access-token "nope")
                         :url "http://localhost:18080/some-resource"
                         :throw-exceptions false}))))
 

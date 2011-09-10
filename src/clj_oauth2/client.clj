@@ -71,14 +71,19 @@
         (request-access-token endpoint code)))
 
 
-(defn request [{:keys [oauth2] :as req}]
-  (let [{:keys [access-token query-param]} oauth2]
-    (when-not query-param
-      (raise :type :argument-error
-             :message ":query-param missing"))
-    (http/request (assoc-in req
-                            [:query-params query-param]
-                            access-token))))
+(defn wrap-oauth2 [client]
+  (fn [{:keys [oauth2] :as req}]
+    (let [{:keys [access-token query-param throw-exceptions]} oauth2]
+      (if (and query-param access-token)
+        (client (assoc-in (dissoc req :query-param :access-token)
+                          [:query-params query-param]
+                          access-token))
+        (if throw-exceptions
+          (throw (OAuth2Exception. "Missing :oauth2 params"))
+          (client req))))))
+
+(defn request [req]
+  ((wrap-oauth2 http/request) req))
 
 (defmacro def-request-shortcut-fn [method]
   (let [method-key (keyword method)]
