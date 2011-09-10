@@ -70,20 +70,21 @@
         (request-access-token endpoint code)))
 
 
-(defn request [{:keys [access-token query-param]} req]
-  (when-not query-param
-    (raise :type :argument-error
-           :message ":query-param missing"))
-  (http/request (assoc-in req
-                          [:query-params query-param]
-                          access-token)))
+(defn request [{:keys [oauth2] :as req}]
+  (let [{:keys [access-token query-param]} oauth2]
+    (when-not query-param
+      (raise :type :argument-error
+             :message ":query-param missing"))
+    (http/request (assoc-in req
+                            [:query-params query-param]
+                            access-token))))
 
 (defmacro def-request-shortcut-fn [method]
   (let [method-key (keyword method)]
-    `(defn ~method [token# url# & [req#]]
-       (request token# (merge req#
-                              {:method ~method-key
-                               :url url#})))))
+    `(defn ~method [url# & [req#]]
+       (request (merge req#
+                       {:method ~method-key
+                        :url url#})))))
 
 (def-request-shortcut-fn get)
 (def-request-shortcut-fn post)
