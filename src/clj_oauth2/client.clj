@@ -2,8 +2,7 @@
   (:use [clj-http.client :only [wrap-request]]
         [clojure.contrib.json :only [read-json]]
         [clojure.contrib.java-utils]
-        [clj-oauth2.uri]
-        [clojure.pprint])
+        [clj-oauth2.uri])
   (:require [clj-http.client :as http]
             [clojure.string :as str])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
@@ -73,7 +72,6 @@
 
 (defn wrap-oauth2 [client]
   (fn [{:keys [oauth2 throw-exceptions] :as req}]
-    (pprint oauth2)
     (let [{:keys [access-token query-param]} oauth2
           req (dissoc req :oauth2)]
       (if (and query-param access-token)
