@@ -74,11 +74,10 @@
 (defn wrap-oauth2 [client]
   (fn [{:keys [oauth2 throw-exceptions] :as req}]
     (pprint oauth2)
-    (let [{:keys [access-token query-param]} oauth2]
+    (let [{:keys [access-token query-param]} oauth2
+          req (dissoc req :oauth2)]
       (if (and query-param access-token)
-        (client (assoc-in (dissoc req :query-param :access-token)
-                          [:query-params query-param]
-                          access-token))
+        (client (assoc-in req [:query-params query-param] access-token))
         (if throw-exceptions
           (throw (OAuth2Exception. "Missing :oauth2 params"))
           (client req))))))
