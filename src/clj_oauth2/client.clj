@@ -69,6 +69,9 @@
         :else
         (request-access-token endpoint code)))
 
+(defn with-access-token [uri {:keys [access-token query-param]}]
+  (str (make-uri (assoc-in (parse-uri uri) [:query query-param] access-token))))
+
 
 (defn wrap-oauth2 [client]
   (fn [{:keys [oauth2 throw-exceptions] :as req}]
