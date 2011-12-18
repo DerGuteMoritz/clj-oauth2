@@ -1,11 +1,11 @@
-(ns clj-oauth2.test.client
-  (:use [clj-oauth2.client]
-        [clj-oauth2.uri]
+(ns clj-oauth2.client-test
+  (:use [clj-oauth2.uri]
         [lazytest.describe]
         [lazytest.expect :only (expect)]
         [clojure.data.json :only [json-str]]
         [clojure.pprint :only [pprint]])
-  (:require [ring.adapter.jetty :as ring])
+  (:require [clj-oauth2.client :as base]
+            [ring.adapter.jetty :as ring])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
 
 
@@ -102,7 +102,7 @@
   (future (ring/run-jetty handler {:port 18080})))
 
 (describe "grant-type authorization-code"
-  (given [req (make-auth-request endpoint-auth-code "bazqux")
+  (given [req (base/make-auth-request endpoint-auth-code "bazqux")
           uri (parse-uri (:uri req))]
     (it "constructs a uri for the authorization redirect"
       (and (= (:scheme uri) "http")
@@ -118,32 +118,32 @@
       (and (= (:scope req) ["foo" "bar"])
            (= (:state req) "bazqux"))))
 
-  (testing get-access-token
+  (testing base/get-access-token
     (it "returns an access token hash-map on success"
-      (= (:access-token (get-access-token endpoint-auth-code
+      (= (:access-token (base/get-access-token endpoint-auth-code
                                           {:code "abracadabra" :state "foo"}
                                           {:state "foo"}))
          "sesame"))
     (it "also works with application/x-www-form-urlencoded responses (as produced by Facebook)"
-      (= (:access-token (get-access-token (assoc endpoint-auth-code :access-token-uri
+      (= (:access-token (base/get-access-token (assoc endpoint-auth-code :access-token-uri
                                                  (str (:access-token-uri endpoint-auth-code)
                                                       "?formurlenc"))
                                           {:code "abracadabra" :state "foo"}
                                           {:state "foo"}))
          "sesame"))
     (it "returns an access token when no state is given"
-      (= (:access-token (get-access-token endpoint-auth-code {:code "abracadabra"}))
+      (= (:access-token (base/get-access-token endpoint-auth-code {:code "abracadabra"}))
          "sesame"))
     (it "fails when state differs from expected state"
       (throws? OAuth2StateMismatchException
                (fn []
-                 (get-access-token endpoint-auth-code
+                 (base/get-access-token endpoint-auth-code
                                    {:code "abracadabra" :state "foo"}
                                    {:state "bar"}))))
     (it "fails when an error response is passed in"
       (throws? OAuth2Exception
                (fn []
-                 (get-access-token endpoint-auth-code
+                 (base/get-access-token endpoint-auth-code
                                    {:error "invalid_client"
                                     :error_description "something went wrong"}))
                (fn [e]
@@ -151,7 +151,7 @@
     (it "raises on error response"
       (throws? OAuth2Exception
                (fn []
-                 (get-access-token (assoc endpoint-auth-code
+                 (base/get-access-token (assoc endpoint-auth-code
                                      :access-token-uri
                                      "http://localhost:18080/token-error")
                                    {:code "abracadabra" :state "foo"}
@@ -162,28 +162,28 @@
 (describe "token usage"
   (it "should grant access to protected resources"
     (= "that's gold jerry!"
-       (:body (request {:method :get
+       (:body (base/request {:method :get
                         :oauth2 access-token
                         :url "http://localhost:18080/some-resource"}))))
 
   (it "should preserve the url's query string when adding the access-token"
     (= {:foo "123" (:query-param access-token) (:access-token access-token)}
-       (form-url-decode (:body (request {:method :get
+       (form-url-decode (:body (base/request {:method :get
                                          :oauth2 access-token
                                          :query-params {:foo "123"}
                                          :url "http://localhost:18080/query-echo"})))))
 
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
-       (:body (request {:method :get
+       (:body (base/request {:method :get
                         :oauth2 (assoc access-token :access-token "nope")
                         :url "http://localhost:18080/some-resource"
                         :throw-exceptions false}))))
 
   (testing "pre-defined shortcut request functions"
     (given [req {:oauth2 access-token}]
-      (it (= "get" (:body (get "http://localhost:18080/get" req))))
-      (it (= "post" (:body (post "http://localhost:18080/post" req))))
-      (it (= "put" (:body (put "http://localhost:18080/put" req))))
-      (it (= "delete" (:body (delete "http://localhost:18080/delete" req))))
-      (it (= 200 (:status (head "http://localhost:18080/head" req)))))))
+      (it (= "get" (:body (base/get "http://localhost:18080/get" req))))
+      (it (= "post" (:body (base/post "http://localhost:18080/post" req))))
+      (it (= "put" (:body (base/put "http://localhost:18080/put" req))))
+      (it (= "delete" (:body (base/delete "http://localhost:18080/delete" req))))
+      (it (= 200 (:status (base/head "http://localhost:18080/head" req)))))))
