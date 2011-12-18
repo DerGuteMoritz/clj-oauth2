@@ -3,8 +3,8 @@
         [clj-oauth2.uri]
         [lazytest.describe]
         [lazytest.expect :only (expect)]
-        [clojure.contrib.json :only [json-str]]
-        [clojure.contrib.pprint :only [pprint]]) 
+        [clojure.data.json :only [json-str]]
+        [clojure.pprint :only [pprint]])
   (:require [ring.adapter.jetty :as ring])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
 
