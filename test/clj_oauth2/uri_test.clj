@@ -1,4 +1,4 @@
-(ns clj-oauth2.test.uri
+(ns clj-oauth2.uri-test
   (:use [clj-oauth2.uri]
         [lazytest.describe])
   (:import [java.net URI]))

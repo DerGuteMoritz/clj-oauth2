@@ -1,7 +1,6 @@
 (ns clj-oauth2.client
   (:use [clj-http.client :only [wrap-request]]
-        [clojure.contrib.json :only [read-json]]
-        [clojure.contrib.java-utils]
+        [clojure.data.json :only [read-json]]
         [clj-oauth2.uri])
   (:require [clj-http.client :as http]
             [clojure.string :as str])
