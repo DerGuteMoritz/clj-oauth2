@@ -1,0 +1,3 @@
+== 0.1.0 upgrade to Clojure 1.3
+* update dependencies
+* eliminate contrib
