@@ -1,4 +1,5 @@
 (ns clj-oauth2.client
+  (:refer-clojure :exclude [get])
   (:use [clj-http.client :only [wrap-request]]
         [clojure.data.json :only [read-json]]
         [clj-oauth2.uri])
