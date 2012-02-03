@@ -45,8 +45,11 @@
 (def endpoint-resource-owner
   (assoc endpoint
     :grant-type "password"
-    :username "foo"
-    :password "bar"))
+    :access-token-uri "http://localhost:18080/token-password"))
+
+(def resource-owner-credentials
+  {:username "foo"
+   :password "bar"})
 
 (defn parse-base64-auth-header [req]
   (let [header (get-in req [:headers "authorization"] "")
@@ -77,6 +80,26 @@
     (and (= client-id (:client-id endpoint))
          (= client-secret (:client-secret endpoint)))))
 
+(defn token-response [req]
+  {:status 200
+   :headers {"content-type" (str "application/"
+                                 (if (contains? (:query-params req) :formurlenc)
+                                   "x-www-form-urlencoded"
+                                   "json")
+                                 "; charset=UTF-8")}
+   :body ((if (contains? (:query-params req) :formurlenc)
+            uri/form-url-encode
+            json-str)
+          (let [{:keys [access-token
+                        token-type
+                        expires-in
+                        refresh-token]}
+                access-token]
+            {:access_token access-token
+             :token_type token-type
+             :expires_in expires-in
+             :refresh_token refresh-token}))})
+
 ;; shamelessly copied from clj-http tests
 (defn handler [req]
   ;; (pprint req)
@@ -93,25 +116,17 @@
                  (= (:grant_type body) "authorization_code")
                  (client-authenticated? req endpoint-auth-code)
                  (= (:redirect_uri body) (:redirect-uri endpoint-auth-code)))
-          {:status 200
-           :headers {"content-type" (str "application/"
-                                         (if (contains? (:query-params req) :formurlenc)
-                                           "x-www-form-urlencoded"
-                                           "json")
-                                         "; charset=UTF-8")}
-           :body ((if (contains? (:query-params req) :formurlenc)
-                    uri/form-url-encode
-                    json-str)
-                  (let [{:keys [access-token
-                                token-type
-                                expires-in
-                                refresh-token]}
-                        access-token]
-                    {:access_token access-token
-                     :token_type token-type
-                     :expires_in expires-in
-                     :refresh_token refresh-token}))}
-          {:status 400 :body "error"}))
+          (token-response req)
+          {:status 400 :body "error=fail&error_description=invalid"}))
+      [:post "/token-password"]
+      (let [body (uri/form-url-decode (slurp (:body req)))
+            req (assoc req :body body)]
+        (if (and (= (:grant_type body) "password")
+                 (= (:username body) (:username resource-owner-credentials))
+                 (= (:password body) (:password resource-owner-credentials))
+                 (client-authenticated? req endpoint-resource-owner))
+          (token-response req)
+          {:status 400 :body "error=fail&error_description=invalid"}))
       [:post "/token-error"]
       {:status 400
        :headers {"content-type" "application/json"}
@@ -204,6 +219,20 @@
                                    {:state "foo"}))
                (fn [e]
                  (expect (= ["not good" "unauthorized_client"] @e)))))))
+
+(describe "grant-type resource-owner"
+  (testing base/get-access-token
+    (it "returns an access token hash-map on success"
+      (= (:access-token (base/get-access-token endpoint-resource-owner resource-owner-credentials))
+         "sesame"))
+    (it "fails when invalid credentials are given"
+      (throws? OAuth2Exception
+               (fn []
+                 (base/get-access-token
+                  endpoint-resource-owner
+                  {:username "foo" :password "qux"}))
+               (fn [e]
+                 (expect (= ["invalid" "fail"] @e)))))))
 
 (describe "token usage"
   (it "should grant access to protected resources"

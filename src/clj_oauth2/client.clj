@@ -41,6 +41,12 @@
                       :redirect_uri
                       (:redirect-uri endpoint)}}))
 
+(defmethod prepare-access-token-request
+  "password" [request endpoint params]
+  (merge-with merge request
+              {:body {:username (:username params)
+                      :password (:password params)}}))
+
 (defn- add-client-authentication [request endpoint]
   (let [{:keys [client-id client-secret authorization-header?]} endpoint]
     (if authorization-header?
@@ -73,14 +79,17 @@
                (read-json body)
                (uri/form-url-decode body)) ; Facebookism
         error (:error body)]
-    
-    (if error
-      (throw (OAuth2Exception. (if (string? error)
-                                 (:error_description body)
-                                 (:message error)) ; Facebookism
-                               (if (string? error)
-                                 error
-                                 (:type error)))) ; Facebookism 
+    (if (or error (not= status 200))
+      (throw (OAuth2Exception. (if error
+                                 (if (string? error)
+                                   (:error_description body)
+                                   (:message error)) ; Facebookism
+                                 "error requesting access token")
+                               (if error
+                                 (if (string? error)
+                                   error
+                                   (:type error)) ; Facebookism 
+                                 "unknown")))
       {:access-token (:access_token body)
        :token-type (:token_type body)
        :query-param access-query-param})))
@@ -91,7 +100,6 @@
   (let [{:keys [state error]} params]
     (cond (string? error)
           (throw (OAuth2Exception. (:error_description params) error))
-
           (and expected-state (not (= state expected-state)))
           (throw (OAuth2StateMismatchException.
                   (format "Expected state %s but got %s"
