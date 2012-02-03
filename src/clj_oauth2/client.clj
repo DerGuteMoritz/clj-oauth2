@@ -5,7 +5,8 @@
   (:require [clj-http.client :as http]
             [clojure.string :as str]
             [uri.core :as uri])
-  (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
+  (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]
+           [org.apache.commons.codec.binary Base64]))
 
 (defn make-auth-request
   [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
@@ -23,23 +24,43 @@
      :scope scope
      :state state}))
 
+(defn- add-base64-auth-header [req scheme param]
+  (let [param (Base64/encodeBase64String (.getBytes param))
+        header (str scheme " " param)]
+    (assoc-in req [:headers "Authorization"] header)))
+
 (defn- request-access-token
-  [{:keys [access-token-uri client-id client-secret redirect-uri access-query-param]} code]
-  (let [{:keys [body headers status]}
-        (http/post access-token-uri
-                   {:content-type "application/x-www-form-urlencoded"
-                    :throw-exceptions false
-                    :body (uri/form-url-encode
-                           {:code code
-                            :grant_type "authorization_code"
-                            :client_id client-id
-                            :client_secret client-secret
-                            :redirect_uri redirect-uri})})
+  [endpoint code]
+  (let [{:keys [access-token-uri client-id client-secret
+                redirect-uri access-query-param
+                grant-type authorization-header?]}
+        endpoint
+        request
+        {:content-type "application/x-www-form-urlencoded"
+         :throw-exceptions false
+         :body {:code code
+                :grant_type grant-type
+                :redirect_uri redirect-uri}}
+        request
+        (if authorization-header?
+          (add-base64-auth-header
+           request
+           "Basic"
+           (str client-id ":" client-secret))
+          (merge-with
+           merge
+           request
+           {:body
+            {:client_id client-id
+             :client_secret client-secret}}))
+        request (update-in request [:body] uri/form-url-encode)
+        {:keys [body headers status]} (http/post access-token-uri request)
         content-type (headers "content-type")
-        body (if (or (.startsWith content-type "application/json")
-                     (.startsWith content-type "text/javascript")) ; Facebookism
+        body (if (and content-type
+                      (or (.startsWith content-type "application/json")
+                          (.startsWith content-type "text/javascript"))) ; Facebookism
                (read-json body)
-               (uri/form-url-decode body))  ; Facebookism
+               (uri/form-url-decode body)) ; Facebookism
         error (:error body)]
     
     (if error
@@ -50,6 +71,7 @@
                                  error
                                  (:type error)))) ; Facebookism 
       {:access-token (:access_token body)
+       :token-type (:token_type body)
        :query-param access-query-param})))
 
 (defn get-access-token [endpoint
@@ -74,13 +96,34 @@
                            [:query query-param]
                            access-token))))
 
+(defmulti add-access-token-to-request
+  (fn [req oauth2]
+    (:token-type oauth2)))
+
+(defmethod add-access-token-to-request
+  :default [req oauth2]
+  (let [{:keys [token-type]} oauth2]
+    (if (:throw-exceptions req)
+      (throw (OAuth2Exception. (str "Unknown token type: " token-type)))
+      [req false])))
+
+(defmethod add-access-token-to-request
+  "bearer" [req oauth2]
+  (let [{:keys [access-token query-param]} oauth2]
+    (if access-token
+      [(if query-param
+         (assoc-in req [:query-params query-param] access-token)
+         (add-base64-auth-header req "Bearer" access-token))
+       true]
+      [req false])))
 
 (defn wrap-oauth2 [client]
-  (fn [{:keys [oauth2 throw-exceptions] :as req}]
-    (let [{:keys [access-token query-param]} oauth2
+  (fn [req]
+    (let [{:keys [oauth2 throw-exceptions]} req
+          [req token-added?] (add-access-token-to-request req oauth2)
           req (dissoc req :oauth2)]
-      (if (and query-param access-token)
-        (client (assoc-in req [:query-params query-param] access-token))
+      (if token-added?
+        (client req)
         (if throw-exceptions
           (throw (OAuth2Exception. "Missing :oauth2 params"))
           (client req))))))

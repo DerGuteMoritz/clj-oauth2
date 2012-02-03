@@ -3,7 +3,8 @@
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/data.json "0.1.1"]
                  [clj-http "0.2.6"]
-                 [uri "1.1.0"]]
+                 [uri "1.1.0"]
+                 [commons-codec/commons-codec "1.6"]]
   :dev-dependencies [[ring "0.3.11"]
                      [com.stuartsierra/lazytest "1.1.2"
                       :exclusions [swank-clojure]]]
