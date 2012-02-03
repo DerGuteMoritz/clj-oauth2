@@ -29,30 +29,41 @@
         header (str scheme " " param)]
     (assoc-in req [:headers "Authorization"] header)))
 
+(defmulti prepare-access-token-request
+  (fn [request endpoint params]
+    (:grant-type endpoint)))
+
+(defmethod prepare-access-token-request
+  "authorization_code" [request endpoint params]
+  (merge-with merge request
+              {:body {:code
+                      (:code params)
+                      :redirect_uri
+                      (:redirect-uri endpoint)}}))
+
+(defn- add-client-authentication [request endpoint]
+  (let [{:keys [client-id client-secret authorization-header?]} endpoint]
+    (if authorization-header?
+      (add-base64-auth-header
+       request
+       "Basic"
+       (str client-id ":" client-secret))
+      (merge-with
+       merge
+       request
+       {:body
+        {:client_id client-id
+         :client_secret client-secret}}))))
+
 (defn- request-access-token
-  [endpoint code]
-  (let [{:keys [access-token-uri client-id client-secret
-                redirect-uri access-query-param
-                grant-type authorization-header?]}
-        endpoint
+  [endpoint params]
+  (let [{:keys [access-token-uri access-query-param grant-type]} endpoint
         request
         {:content-type "application/x-www-form-urlencoded"
          :throw-exceptions false
-         :body {:code code
-                :grant_type grant-type
-                :redirect_uri redirect-uri}}
-        request
-        (if authorization-header?
-          (add-base64-auth-header
-           request
-           "Basic"
-           (str client-id ":" client-secret))
-          (merge-with
-           merge
-           request
-           {:body
-            {:client_id client-id
-             :client_secret client-secret}}))
+         :body {:grant_type grant-type}}
+        request (prepare-access-token-request request endpoint params)
+        request (add-client-authentication request endpoint)
         request (update-in request [:body] uri/form-url-encode)
         {:keys [body headers status]} (http/post access-token-uri request)
         content-type (headers "content-type")
@@ -74,22 +85,21 @@
        :token-type (:token_type body)
        :query-param access-query-param})))
 
-(defn get-access-token [endpoint
-                        {error-description :error_description
-                         :keys [code state error]}
-                        & [{expected-state :state expected-scope :scope}]]
-  (cond (string? error)
-        (throw (OAuth2Exception. error-description error))
+(defn get-access-token
+  [endpoint 
+   & [params {expected-state :state expected-scope :scope}]]
+  (let [{:keys [state error]} params]
+    (cond (string? error)
+          (throw (OAuth2Exception. (:error_description params) error))
 
-        (and expected-state (not (= state expected-state)))
-        (throw (OAuth2StateMismatchException.
-                (format "Expected state %s but got %s"
-                        state expected-state)
-                state
-                expected-state))
-        
-        :else
-        (request-access-token endpoint code)))
+          (and expected-state (not (= state expected-state)))
+          (throw (OAuth2StateMismatchException.
+                  (format "Expected state %s but got %s"
+                          state expected-state)
+                  state
+                  expected-state))
+          :else
+          (request-access-token endpoint params))))
 
 (defn with-access-token [uri {:keys [access-token query-param]}]
   (str (uri/make (assoc-in (uri/uri->map (uri/make uri) true)
