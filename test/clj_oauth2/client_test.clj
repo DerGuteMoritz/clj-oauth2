@@ -1,11 +1,11 @@
 (ns clj-oauth2.client-test
-  (:use [clj-oauth2.uri]
-        [lazytest.describe]
+  (:use [lazytest.describe]
         [lazytest.expect :only (expect)]
         [clojure.data.json :only [json-str]]
         [clojure.pprint :only [pprint]])
   (:require [clj-oauth2.client :as base]
-            [ring.adapter.jetty :as ring])
+            [ring.adapter.jetty :as ring]
+            [uri.core :as uri])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
 
 
@@ -20,11 +20,8 @@
 
 
 (def endpoint
-  {:authorization-uri "http://localhost:18080/auth"
-   :access-token-uri "http://localhost:18080/token"
-   :client-id "foo"
+  {:client-id "foo"
    :client-secret "bar"
-   :redirect-uri "http://my.host/cb"
    :access-query-param :access_token
    :scope ["foo" "bar"]})
 
@@ -38,10 +35,13 @@
 
 (def endpoint-auth-code
   (assoc endpoint
-    :grant-type 'authorization-code))
+    :redirect-uri "http://my.host/cb"
+    :grant-type "authorization-code"
+    :authorization-uri "http://localhost:18080/auth"
+    :access-token-uri "http://localhost:18080/token-auth-code"))
 
 (defn handle-protected-resource [req grant & [deny]]
-  (let [query (form-url-decode (:query-string req))]
+  (let [query (uri/form-url-decode (:query-string req))]
     (if (= (:access_token query) (:access-token access-token))
       {:status 200 :body grant}
       {:status 400 :body (or deny "nope")})))
@@ -52,13 +52,13 @@
   ;; (println)
   ;; (println)
   (condp = [(:request-method req) (:uri req)]
-    [:post "/token"]
-    (let [body (form-url-decode (slurp (:body req)))]
+    [:post "/token-auth-code"]
+    (let [body (uri/form-url-decode (slurp (:body req)))]
       (if (and (= (:code body) "abracadabra")
                (= (:grant_type body) "authorization_code")
-               (= (:client_id body) (:client-id endpoint))
-               (= (:client_secret body) (:client-secret endpoint))
-               (= (:redirect_uri body) (:redirect-uri endpoint)))
+               (= (:client_id body) (:client-id endpoint-auth-code))
+               (= (:client_secret body) (:client-secret endpoint-auth-code))
+               (= (:redirect_uri body) (:redirect-uri endpoint-auth-code)))
         {:status 200
          :headers {"content-type" (str "application/"
                                        (condp = (:query-string req)
@@ -66,7 +66,7 @@
                                          nil "json")
                                        "; charset=UTF-8")}
          :body ((condp = (:query-string req)
-                  "formurlenc" url-encode
+                  "formurlenc" uri/form-url-encode
                   nil json-str)
                 (let [{:keys [access-token
                               token-type
@@ -103,7 +103,7 @@
 
 (describe "grant-type authorization-code"
   (given [req (base/make-auth-request endpoint-auth-code "bazqux")
-          uri (parse-uri (:uri req))]
+          uri (uri/uri->map (uri/make (:uri req)) true)]
     (it "constructs a uri for the authorization redirect"
       (and (= (:scheme uri) "http")
            (= (:host uri) "localhost")
@@ -163,22 +163,23 @@
   (it "should grant access to protected resources"
     (= "that's gold jerry!"
        (:body (base/request {:method :get
-                        :oauth2 access-token
-                        :url "http://localhost:18080/some-resource"}))))
+                             :oauth2 access-token
+                             :url "http://localhost:18080/some-resource"}))))
 
   (it "should preserve the url's query string when adding the access-token"
     (= {:foo "123" (:query-param access-token) (:access-token access-token)}
-       (form-url-decode (:body (base/request {:method :get
-                                         :oauth2 access-token
-                                         :query-params {:foo "123"}
-                                         :url "http://localhost:18080/query-echo"})))))
+       (uri/form-url-decode
+        (:body (base/request {:method :get
+                              :oauth2 access-token
+                              :query-params {:foo "123"}
+                              :url "http://localhost:18080/query-echo"})))))
 
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
        (:body (base/request {:method :get
-                        :oauth2 (assoc access-token :access-token "nope")
-                        :url "http://localhost:18080/some-resource"
-                        :throw-exceptions false}))))
+                             :oauth2 (assoc access-token :access-token "nope")
+                             :url "http://localhost:18080/some-resource"
+                             :throw-exceptions false}))))
 
   (testing "pre-defined shortcut request functions"
     (given [req {:oauth2 access-token}]

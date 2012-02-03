@@ -1,16 +1,16 @@
 (ns clj-oauth2.client
   (:refer-clojure :exclude [get])
   (:use [clj-http.client :only [wrap-request]]
-        [clojure.data.json :only [read-json]]
-        [clj-oauth2.uri])
+        [clojure.data.json :only [read-json]])
   (:require [clj-http.client :as http]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [uri.core :as uri])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]))
 
 (defn make-auth-request
   [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
    & [state]]
-  (let [uri (parse-uri authorization-uri)
+  (let [uri (uri/uri->map (uri/make authorization-uri) true)
         query (assoc (:query uri)
                 :client_id client-id
                 :redirect_uri redirect-uri
@@ -19,7 +19,7 @@
         query (if scope
                 (assoc query :scope (str/join " " scope))
                 query)]
-    {:uri (str (make-uri (assoc uri :query query)))
+    {:uri (str (uri/make (assoc uri :query query)))
      :scope scope
      :state state}))
 
@@ -29,7 +29,7 @@
         (http/post access-token-uri
                    {:content-type "application/x-www-form-urlencoded"
                     :throw-exceptions false
-                    :body (url-encode
+                    :body (uri/form-url-encode
                            {:code code
                             :grant_type "authorization_code"
                             :client_id client-id
@@ -39,7 +39,7 @@
         body (if (or (.startsWith content-type "application/json")
                      (.startsWith content-type "text/javascript")) ; Facebookism
                (read-json body)
-               (form-url-decode body))  ; Facebookism
+               (uri/form-url-decode body))  ; Facebookism
         error (:error body)]
     
     (if error
@@ -70,7 +70,9 @@
         (request-access-token endpoint code)))
 
 (defn with-access-token [uri {:keys [access-token query-param]}]
-  (str (make-uri (assoc-in (parse-uri uri) [:query query-param] access-token))))
+  (str (uri/make (assoc-in (uri/uri->map (uri/make uri) true)
+                           [:query query-param]
+                           access-token))))
 
 
 (defn wrap-oauth2 [client]
