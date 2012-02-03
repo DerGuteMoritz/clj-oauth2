@@ -63,9 +63,10 @@
 (defn handle-protected-resource [req grant & [deny]]
   (let [query (uri/form-url-decode (:query-string req))
         [scheme param] (parse-base64-auth-header req)
-        bearer-token (and (= scheme "bearer") param)]
-    (if (= (or bearer-token (:access_token query)) (:access-token access-token))
-      {:status 200 :body grant}
+        bearer-token (and (= scheme "bearer") param)
+        token (or bearer-token (:access_token query))]
+    (if (= token (:access-token access-token))
+      {:status 200 :body (if (fn? grant) (grant token) grant)}
       {:status 400 :body (or deny "nope")})))
 
 (defn client-authenticated? [req endpoint]
@@ -120,6 +121,12 @@
       (handle-protected-resource req "that's gold jerry!")
       [:get "/query-echo"]
       (handle-protected-resource req (:query-string req))
+      [:get "/query-and-token-echo"]
+      (handle-protected-resource req
+                                 (fn [token]
+                                   (uri/form-url-encode
+                                    (assoc (:query-params req)
+                                      :access_token token))))
       [:get "/get"]
       (handle-protected-resource req "get")
       [:post "/post"]
@@ -212,6 +219,14 @@
                               :oauth2 access-token
                               :query-params {:foo "123"}
                               :url "http://localhost:18080/query-echo"})))))
+
+  (it "should support passing bearer tokens through the authorization header"
+    (= {:foo "123" :access_token (:access-token access-token)}
+       (uri/form-url-decode
+        (:body (base/request {:method :get
+                              :oauth2 (dissoc access-token :query-param)
+                              :query-params {:foo "123"}
+                              :url "http://localhost:18080/query-and-token-echo"})))))
 
   (it "should deny access to protected resource given an invalid access token"
     (= "nope"
