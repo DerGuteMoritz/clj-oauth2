@@ -29,6 +29,10 @@
         header (str scheme " " param)]
     (assoc-in req [:headers "Authorization"] header)))
 
+(defn- add-auth-header [req scheme param] ; Force.com
+  (let [header (str scheme " " param)]
+    (assoc-in req [:headers "Authorization"] header)))
+
 (defmulti prepare-access-token-request
   (fn [request endpoint params]
     (:grant-type endpoint)))
@@ -91,8 +95,9 @@
                                    (:type error)) ; Facebookism 
                                  "unknown")))
       {:access-token (:access_token body)
-       :token-type (:token_type body)
-       :query-param access-query-param})))
+       :token-type (or (:token_type body) "draft-10") ; Force.com
+       :query-param access-query-param
+       :params (dissoc body :access_token :token_type)})))
 
 (defn get-access-token
   [endpoint 
@@ -132,6 +137,16 @@
       [(if query-param
          (assoc-in req [:query-params query-param] access-token)
          (add-base64-auth-header req "Bearer" access-token))
+       true]
+      [req false])))
+
+(defmethod add-access-token-to-request ; Force.com
+  "draft-10" [req oauth2]
+  (let [{:keys [access-token query-param]} oauth2]
+    (if access-token
+      [(if query-param
+         (assoc-in req [:query-params query-param] access-token)
+         (add-auth-header req "OAuth" access-token))
        true]
       [req false])))
 
