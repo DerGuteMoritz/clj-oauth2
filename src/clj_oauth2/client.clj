@@ -24,14 +24,12 @@
      :scope scope
      :state state}))
 
-(defn- add-base64-auth-header [req scheme param]
-  (let [param (Base64/encodeBase64String (.getBytes param))
-        header (str scheme " " param)]
-    (assoc-in req [:headers "Authorization"] header)))
-
 (defn- add-auth-header [req scheme param] ; Force.com
   (let [header (str scheme " " param)]
     (assoc-in req [:headers "Authorization"] header)))
+
+(defn- add-base64-auth-header [req scheme param]
+	(add-auth-header req scheme (Base64/encodeBase64String (.getBytes param))))
 
 (defmulti prepare-access-token-request
   (fn [request endpoint params]

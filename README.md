@@ -38,7 +38,13 @@ clj-oauth2 wraps clj-http for accessing protected resources.
     ;; access protected resource
     (oauth2/get "https://graph.facebook.com/me" {:oauth2 access-token})
 
-## Ring Wrapper
+## Ring Middleware
+
+		(:use [clj-oauth2.ring :only [wrap-oauth2]])
+		(:require [clj-oauth2.client :as oauth2])
+
+		(def login-uri
+			(get (System/getenv) "LOGIN_URI" "https://login.salesforce.com"))
 
     (def force-com-oauth2
       {:authorization-uri (str login-uri "/services/oauth2/authorize")
@@ -69,7 +75,7 @@ clj-oauth2 wraps clj-http for accessing protected resources.
      ; Set up the wrappers
      (def app 
      	(-> handler 
-     		(wrapper/wrap-oauth force-com-oauth2)
+     		(wrap-oauth2 force-com-oauth2)
      		wrap-session 
      		wrap-keyword-params
      		wrap-params))
