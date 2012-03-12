@@ -40,8 +40,8 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
 ## Ring Middleware
 
-		(:use [clj-oauth2.ring :only [wrap-oauth2]])
-		(:require [clj-oauth2.client :as oauth2])
+		(:require [clj-oauth2.client :as oauth2]
+              [clj-oauth2.ring :as oauth2-ring])
 
 		(def login-uri
 			(get (System/getenv) "LOGIN_URI" "https://login.salesforce.com"))
@@ -55,6 +55,12 @@ clj-oauth2 wraps clj-http for accessing protected resources.
        :scope ["id" "api" "refresh_token"]
        :grant-type "authorization_code"
        :trace-messages (Boolean/valueOf (get (System/getenv) "DEBUG" "false"))
+       :get-state oauth2-ring/get-state-from-session
+       :put-state oauth2-ring/put-state-in-session
+       :get-target oauth2-ring/get-target-from-session
+       :put-target oauth2-ring/put-target-in-session
+       :get-oauth2-data oauth2-ring/get-oauth2-data-from-session
+       :put-oauth2-data oauth2-ring/put-oauth2-data-in-session
        :exclude #"^/public.*"})
 
      ; This is the mapping of URL paths to actions
