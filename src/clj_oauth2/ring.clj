@@ -43,6 +43,15 @@
                (or (:session response) (:session request)) 
                (or (find response :oauth2) {:oauth2 oauth2-data}))))
 
+(defn request-uri [request oauth2-params]
+  (let [scheme (if (:force-https oauth2-params) "https" (name (:scheme request)))
+        port (if (or (and (= (name (:scheme request)) "http") 
+                          (not= (:server-port request) 80))
+                     (and (= (name (:scheme request)) "https") 
+                          (not= (:server-port request) 443))) 
+                  (str ":" (:server-port request)))]
+    (str scheme "://" (:server-name request) port (:uri request))))     
+
 ;; This Ring wrapper acts as a filter, ensuring that the user has an OAuth
 ;; token for all but a set of explicitly excluded URLs. The response from
 ;; oauth2/get-access-token is exposed in the request via the :oauth2 key. 
@@ -56,13 +65,8 @@
 				(handler request)
         ;; Is the request uri the same as the redirect URI?
 				;; Use string compare, since java.net.URL.equals resolves hostnames - very slow!
-			  (if (= (.toString 
-			           (java.net.URL. 
-			             (name (:scheme request)) 
-			             (:server-name request) 
-			             (:server-port request) 
-			             (:uri request)))
-			         (:redirect-uri oauth2-params))
+			  (if (= (request-uri request oauth2-params)
+			         (.toString (java.net.URL. (:redirect-uri oauth2-params))))
         	;; We should have an authorization code - get the access token, put
         	;; it in the response and redirect to the originally requested URL
 				  (let [response {:status 302
