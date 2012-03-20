@@ -5,8 +5,5 @@
                  [clj-http "0.2.6"]
                  [uri "1.1.0"]
                  [commons-codec/commons-codec "1.6"]]
-  :dev-dependencies [[ring "0.3.11"]
-                     [com.stuartsierra/lazytest "1.1.2"
-                      :exclusions [swank-clojure]]]
-  :repositories {"stuartsierra-releases" "http://stuartsierra.com/maven2"}
+  :dev-dependencies [[ring "0.3.11"]]
   :aot [clj-oauth2.OAuth2Exception clj-oauth2.OAuth2StateMismatchException])
