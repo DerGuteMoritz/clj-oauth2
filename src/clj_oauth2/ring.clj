@@ -1,6 +1,8 @@
 (ns clj-oauth2.ring
 	(:require [clojure.contrib.java-utils :as java-utils]
-		        [clj-oauth2.client :as oauth2]))
+		        [clj-oauth2.client :as oauth2]
+		        [ring.util.codec :as codec]
+		        [clojure.string :as string]))
 
 ;; Random mixed case alphanumeric
 (defn- random-string [length]
@@ -42,7 +44,15 @@
     :session (merge 
                (or (:session response) (:session request)) 
                (or (find response :oauth2) {:oauth2 oauth2-data}))))
-
+               
+(def store-data-in-session
+ {:get-state get-state-from-session
+  :put-state put-state-in-session
+  :get-target get-target-from-session
+  :put-target put-target-in-session
+  :get-oauth2-data get-oauth2-data-from-session
+  :put-oauth2-data put-oauth2-data-in-session})
+               
 (defn request-uri [request oauth2-params]
   (let [scheme (if (:force-https oauth2-params) "https" (name (:scheme request)))
         port (if (or (and (= (name (:scheme request)) "http") 
@@ -50,7 +60,67 @@
                      (and (= (name (:scheme request)) "https") 
                           (not= (:server-port request) 443))) 
                   (str ":" (:server-port request)))]
-    (str scheme "://" (:server-name request) port (:uri request))))     
+    (str scheme "://" (:server-name request) port (:uri request))))
+
+;; Parameter handling code shamelessly plundered from ring.middleware. 
+;; Thanks, Mark!
+(defn- keyword-syntax? [s]
+  (re-matches #"[A-Za-z*+!_?-][A-Za-z0-9*+!_?-]*" s))
+
+(defn- keyify-params [target]
+  (cond
+    (map? target)
+      (into {}
+        (for [[k v] target]
+          [(if (and (string? k) (keyword-syntax? k))
+             (keyword k)
+             k)
+           (keyify-params v)]))
+    (vector? target)
+      (vec (map keyify-params target))
+    :else
+      target))
+      
+(defn- assoc-param
+  "Associate a key with a value. If the key already exists in the map,
+create a vector of values."
+  [map key val]
+  (assoc map key
+    (if-let [cur (map key)]
+      (if (vector? cur)
+        (conj cur val)
+        [cur val])
+      val)))
+
+(defn- parse-params
+  "Parse parameters from a string into a map."
+  [^String param-string encoding]
+  (reduce
+    (fn [param-map encoded-param]
+      (if-let [[_ key val] (re-matches #"([^=]+)=(.*)" encoded-param)]
+        (assoc-param param-map
+          (codec/url-decode key encoding)
+          (codec/url-decode (or val "") encoding))
+         param-map))
+    {}
+    (string/split param-string #"&")))
+    
+(defn- submap? [map1 map2]
+  "Are all the key/value pairs in map1 also in map2?"
+  (every? 
+    #{true} 
+    (map 
+      (fn [item] (= item (find map2 (key item)))) 
+      map1)))
+
+(defn is-callback [request oauth2-params]
+  "Returns true if this is a request to the callback URL"
+  (let [oauth2-url-vector (string/split (.toString (java.net.URI. (:redirect-uri oauth2-params))) #"\?")
+        oauth2-uri (nth oauth2-url-vector 0)
+        oauth2-url-params (nth oauth2-url-vector 1)
+        encoding (or (:character-encoding request) "UTF-8")]
+    (and (= oauth2-uri (request-uri request oauth2-params))
+         (submap? (keyify-params (parse-params oauth2-url-params encoding)) (:params request)))))
 
 ;; This Ring wrapper acts as a filter, ensuring that the user has an OAuth
 ;; token for all but a set of explicitly excluded URLs. The response from
@@ -63,10 +133,7 @@
      (fn [request]
 		  (if (excluded? (:uri request) oauth2-params)
 				(handler request)
-        ;; Is the request uri the same as the redirect URI?
-				;; Use string compare, since java.net.URL.equals resolves hostnames - very slow!
-			  (if (= (request-uri request oauth2-params)
-			         (.toString (java.net.URL. (:redirect-uri oauth2-params))))
+			  (if (is-callback request oauth2-params)
         	;; We should have an authorization code - get the access token, put
         	;; it in the response and redirect to the originally requested URL
 				  (let [response {:status 302
