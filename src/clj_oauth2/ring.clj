@@ -107,11 +107,10 @@ create a vector of values."
     
 (defn- submap? [map1 map2]
   "Are all the key/value pairs in map1 also in map2?"
-  (every? 
-    #{true} 
-    (map 
-      (fn [item] (= item (find map2 (key item)))) 
-      map1)))
+  (every?
+   (fn [item]
+     (= item (find map2 (key item))))
+   map1))
 
 (defn is-callback [request oauth2-params]
   "Returns true if this is a request to the callback URL"
