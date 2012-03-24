@@ -29,7 +29,7 @@
     (assoc-in req [:headers "Authorization"] header)))
 
 (defn- add-base64-auth-header [req scheme param]
-	(add-auth-header req scheme (Base64/encodeBase64String (.getBytes param))))
+  (add-auth-header req scheme (Base64/encodeBase64String (.getBytes param))))
 
 (defmulti prepare-access-token-request
   (fn [request endpoint params]
