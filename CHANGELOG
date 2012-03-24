@@ -1,11 +1,20 @@
-== 0.3.1 add Ring wrapper
+## 0.3.0
 
-== 0.3.0 support OAuth 2.0 draft 10 for Force.com
+* support OAuth 2.0 draft 10 for Force.com
+* add Ring middleware
 
-== 0.2.0 support resource owner grant type
+(thanks Pat Patterson for both)
 
-== 0.1.1 avoid redefinition of imported `get` binding (thanks Manoj Waikar)
+## 0.2.0
 
-== 0.1.0 upgrade to Clojure 1.3
+support resource owner grant type
+
+## 0.1.1
+
+avoid redefinition of imported `get` binding (thanks Manoj Waikar)
+
+## 0.1.0
+
+* upgrade to Clojure 1.3
 * update dependencies
 * eliminate contrib
