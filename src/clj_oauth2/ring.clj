@@ -1,6 +1,5 @@
 (ns clj-oauth2.ring
-  (:require [clojure.contrib.java-utils :as java-utils]
-            [clj-oauth2.client :as oauth2]
+  (:require [clj-oauth2.client :as oauth2]
             [ring.util.codec :as codec]
             [clojure.string :as string]))
 

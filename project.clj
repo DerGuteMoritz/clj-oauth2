@@ -5,6 +5,7 @@
                  [clj-http "0.2.6"]
                  [uri "1.1.0"]
                  [commons-codec/commons-codec "1.6"]]
+  :exclusions   [org.clojure/clojure-contrib]
   :dev-dependencies [[ring "0.3.11"]
                      [com.stuartsierra/lazytest "1.1.2"
                       :exclusions [swank-clojure]]]

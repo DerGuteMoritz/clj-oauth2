@@ -6,7 +6,7 @@
   (:require [clj-oauth2.client :as base]
             [ring.adapter.jetty :as ring]
             [uri.core :as uri]
-            [clojure.contrib.string :as str])
+            [clojure.string :as str])
   (:import [clj_oauth2 OAuth2Exception OAuth2StateMismatchException]
            [org.apache.commons.codec.binary Base64]))
 
@@ -61,7 +61,7 @@
   (let [[scheme param] (parse-base64-auth-header req)]
     (and scheme param
          (= "basic" scheme)
-         (str/split #":" 2 param))))
+         (str/split param #":" 2))))
 
 (defn handle-protected-resource [req grant & [deny]]
   (let [query (uri/form-url-decode (:query-string req))
