@@ -50,6 +50,12 @@
   {:username "foo"
    :password "bar"})
 
+(defn parse-auth-header [req]
+  (let [header (get-in req [:headers "authorization"] "")
+        [scheme param] (rest (re-matches #"\s*(\w+)\s+(.+)" header))]
+    (when-let [scheme (and scheme param (.toLowerCase scheme))]
+      [scheme param])))
+
 (defn parse-base64-auth-header [req]
   (let [header (get-in req [:headers "authorization"] "")
         [scheme param] (rest (re-matches #"\s*(\w+)\s+(.+)" header))]
@@ -64,7 +70,7 @@
 
 (defn handle-protected-resource [req grant & [deny]]
   (let [query (uri/form-url-decode (:query-string req))
-        [scheme param] (parse-base64-auth-header req)
+        [scheme param] (parse-auth-header req)
         bearer-token (and (= scheme "bearer") param)
         token (or bearer-token (:access_token query))]
     (if (= token (:access-token access-token))

@@ -90,7 +90,7 @@
                                (if error
                                  (if (string? error)
                                    error
-                                   (:type error)) ; Facebookism 
+                                   (:type error)) ; Facebookism
                                  "unknown")))
       {:access-token (:access_token body)
        :token-type (or (:token_type body) "draft-10") ; Force.com
@@ -98,7 +98,7 @@
        :params (dissoc body :access_token :token_type)})))
 
 (defn get-access-token
-  [endpoint 
+  [endpoint
    & [params {expected-state :state expected-scope :scope}]]
   (let [{:keys [state error]} params]
     (cond (string? error)
@@ -134,7 +134,7 @@
     (if access-token
       [(if query-param
          (assoc-in req [:query-params query-param] access-token)
-         (add-base64-auth-header req "Bearer" access-token))
+         (add-auth-header req "Bearer" access-token))
        true]
       [req false])))
 
