@@ -119,7 +119,7 @@
 
 (defmulti add-access-token-to-request
   (fn [req oauth2]
-    (:token-type oauth2)))
+    (str/lower-case (:token-type oauth2))))
 
 (defmethod add-access-token-to-request
   :default [req oauth2]
