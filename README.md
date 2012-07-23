@@ -12,6 +12,7 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
 ## Basic Usage
 
+```clojure
     (:require [clj-oauth2.client :as oauth2])
 
     (def facebook-oauth2
@@ -22,7 +23,7 @@ clj-oauth2 wraps clj-http for accessing protected resources.
        :client-secret "0987654321"
        :access-query-param :access_token
        :scope ["user_photos" "friends_photos"]
-       :grant-type 'authorization_code})
+       :grant-type "authorization_code"})
 
     ;; redirect user to (:uri auth-req) afterwards
     (def auth-req
@@ -37,9 +38,11 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
     ;; access protected resource
     (oauth2/get "https://graph.facebook.com/me" {:oauth2 access-token})
+```
 
 ## Ring Middleware
 
+```clojure
     (:require [clj-oauth2.client :as oauth2]
               [clj-oauth2.ring :as oauth2-ring])
 
@@ -90,10 +93,11 @@ clj-oauth2 wraps clj-http for accessing protected resources.
      (defn -main []
        (let [port (Integer/parseInt (get (System/getenv) "PORT" "8080"))]
      	    (jetty/run-jetty app {:port port})))
+```
 
 ## License
 
-    Copyright (c) 2011, Moritz Heidkamp
+    Copyright (c) 2011-2012, Moritz Heidkamp
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
