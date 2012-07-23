@@ -95,6 +95,11 @@ clj-oauth2 wraps clj-http for accessing protected resources.
         (jetty/run-jetty app {:port port})))
 ```
 
+## Contributors
+
+Many thanks to Robert Levy, Manoj Waikar, Pat Patterson and Anthony
+Grimes for their contributions.
+
 ## License
 
     Copyright (c) 2011-2012, Moritz Heidkamp
