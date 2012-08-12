@@ -9,7 +9,7 @@
            [org.apache.commons.codec.binary Base64]))
 
 (defn make-auth-request
-  [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
+  [{:keys [authorization-uri client-id client-secret redirect-uri scope access-type]}
    & [state]]
   (let [uri (uri/uri->map (uri/make authorization-uri) true)
         query (assoc (:query uri)
@@ -17,6 +17,7 @@
                 :redirect_uri redirect-uri
                 :response_type "code")
         query (if state (assoc query :state state) query)
+        query (if access-type (assoc query :access_type access-type) query)
         query (if scope
                 (assoc query :scope (str/join " " scope))
                 query)]
