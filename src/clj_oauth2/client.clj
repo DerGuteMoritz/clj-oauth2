@@ -96,7 +96,8 @@
       {:access-token (:access_token body)
        :token-type (or (:token_type body) "draft-10") ; Force.com
        :query-param access-query-param
-       :params (dissoc body :access_token :token_type)})))
+       :params (dissoc body :access_token :token_type)
+       :refresh-token (:refresh_token body)})))
 
 (defn get-access-token
   [endpoint
@@ -159,6 +160,16 @@
         (if throw-exceptions
           (throw (OAuth2Exception. "Missing :oauth2 params"))
           (client req))))))
+
+(defn refresh-access-token
+  [refresh-token {:keys [client-id client-secret access-token-uri]}]
+  (let [req (http/post access-token-uri {:form-params
+                                         {:client_id client-id
+                                          :client_secret client-secret
+                                          :refresh_token refresh-token
+                                          :grant_type "refresh_token"}})]
+    (when (= (:status req) 200)
+      (read-json (:body req)))))
 
 (def request
   (wrap-oauth2 http/request))
