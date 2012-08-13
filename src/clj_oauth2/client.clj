@@ -34,8 +34,7 @@
 
 (defmulti prepare-access-token-request
   (fn [request endpoint params]
-    (assert (string? (:grant-type endpoint)))
-    (:grant-type endpoint)))
+    (name (:grant-type endpoint))))
 
 (defmethod prepare-access-token-request
   "authorization_code" [request endpoint params]
