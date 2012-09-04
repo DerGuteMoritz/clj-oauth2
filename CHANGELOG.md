@@ -1,3 +1,11 @@
+## 0.4.0
+
+* Support for refresh tokens
+* Support for Google's 'offline' access
+* Leiningen 1 and 2 support
+* :grant-type can be string/keyword/symbol
+* Use clojure.test instead of lazytest
+
 ## 0.3.0
 
 * support OAuth 2.0 draft 10 for Force.com

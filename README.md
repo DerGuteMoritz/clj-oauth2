@@ -97,8 +97,8 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
 ## Contributors
 
-Many thanks to Robert Levy, Manoj Waikar, Pat Patterson and Anthony
-Grimes for their contributions.
+Many thanks to Robert Levy, Manoj Waikar, Pat Patterson, Stuart
+Hinson, and Anthony Grimes for their contributions.
 
 ## License
 

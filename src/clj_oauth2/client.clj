@@ -9,7 +9,7 @@
            [org.apache.commons.codec.binary Base64]))
 
 (defn make-auth-request
-  [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
+  [{:keys [authorization-uri client-id redirect-uri scope access-type]}
    & [state]]
   (let [uri (uri/uri->map (uri/make authorization-uri) true)
         query (assoc (:query uri)
@@ -17,6 +17,7 @@
                 :redirect_uri redirect-uri
                 :response_type "code")
         query (if state (assoc query :state state) query)
+        query (if access-type (assoc query :access_type access-type) query)
         query (if scope
                 (assoc query :scope (str/join " " scope))
                 query)]
@@ -33,7 +34,7 @@
 
 (defmulti prepare-access-token-request
   (fn [request endpoint params]
-    (:grant-type endpoint)))
+    (name (:grant-type endpoint))))
 
 (defmethod prepare-access-token-request
   "authorization_code" [request endpoint params]
@@ -90,15 +91,16 @@
                                (if error
                                  (if (string? error)
                                    error
-                                   (:type error)) ; Facebookism 
+                                   (:type error)) ; Facebookism
                                  "unknown")))
       {:access-token (:access_token body)
        :token-type (or (:token_type body) "draft-10") ; Force.com
        :query-param access-query-param
-       :params (dissoc body :access_token :token_type)})))
+       :params (dissoc body :access_token :token_type)
+       :refresh-token (:refresh_token body)})))
 
 (defn get-access-token
-  [endpoint 
+  [endpoint
    & [params {expected-state :state expected-scope :scope}]]
   (let [{:keys [state error]} params]
     (cond (string? error)
@@ -119,7 +121,7 @@
 
 (defmulti add-access-token-to-request
   (fn [req oauth2]
-    (:token-type oauth2)))
+    (str/lower-case (:token-type oauth2))))
 
 (defmethod add-access-token-to-request
   :default [req oauth2]
@@ -134,7 +136,7 @@
     (if access-token
       [(if query-param
          (assoc-in req [:query-params query-param] access-token)
-         (add-base64-auth-header req "Bearer" access-token))
+         (add-auth-header req "Bearer" access-token))
        true]
       [req false])))
 
@@ -158,6 +160,16 @@
         (if throw-exceptions
           (throw (OAuth2Exception. "Missing :oauth2 params"))
           (client req))))))
+
+(defn refresh-access-token
+  [refresh-token {:keys [client-id client-secret access-token-uri]}]
+  (let [req (http/post access-token-uri {:form-params
+                                         {:client_id client-id
+                                          :client_secret client-secret
+                                          :refresh_token refresh-token
+                                          :grant_type "refresh_token"}})]
+    (when (= (:status req) 200)
+      (read-json (:body req)))))
 
 (def request
   (wrap-oauth2 http/request))
