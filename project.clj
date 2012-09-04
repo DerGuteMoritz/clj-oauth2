@@ -3,7 +3,7 @@
 
 (defproject clj-oauth2 "0.4.0-SNAPSHOT"
   :description "clj-http and ring middlewares for OAuth 2.0"
-  :dependencies [[org.clojure/clojure "1.3.0"]
+  :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/data.json "0.1.1"]
                  [clj-http "0.3.2"]
                  [uri "1.1.0"]
