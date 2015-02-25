@@ -2,5 +2,15 @@
 /lib
 /classes
 pom.xml
-*jar
+*.jar
+*.class
+*.swp
+*.swo
+*.out
 .lein-deps-sum
+.lein-failures
+.lein-plugins
+.lein-repl-history
+.nrepl-port
+.DS_Store
+#README.md#
