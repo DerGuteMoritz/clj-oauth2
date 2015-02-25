@@ -1,3 +1,9 @@
+## 0.4.0
+
+* added `refresh-access-token` to get new token from Google
+* added support for additional elements of the config for handling the
+  infrastructure for `refresh-access-token`
+
 ## 0.3.0
 
 * support OAuth 2.0 draft 10 for Force.com

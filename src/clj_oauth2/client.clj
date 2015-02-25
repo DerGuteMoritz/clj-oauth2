@@ -1,4 +1,5 @@
 (ns clj-oauth2.client
+  "The basic client functions for OAuth2 authentication."
   (:refer-clojure :exclude [get])
   (:use [clj-http.client :only [wrap-request]]
         [clojure.data.json :only [read-json]])
@@ -9,8 +10,7 @@
            [org.apache.commons.codec.binary Base64]))
 
 (defn make-auth-request
-  [{:keys [authorization-uri client-id client-secret redirect-uri scope]}
-   & [state]]
+  [{:keys [authorization-uri client-id client-secret redirect-uri scope approval-prompt access-type]} & [state]]
   (let [uri (uri/uri->map (uri/make authorization-uri) true)
         query (assoc (:query uri)
                 :client_id client-id
@@ -19,7 +19,9 @@
         query (if state (assoc query :state state) query)
         query (if scope
                 (assoc query :scope (str/join " " scope))
-                query)]
+                query)
+        query (if approval-prompt (assoc query :approval_prompt approval-prompt) query)
+        query (if access-type (assoc query :access_type access-type) query)]
     {:uri (str (uri/make (assoc uri :query query)))
      :scope scope
      :state state}))
@@ -38,10 +40,13 @@
 (defmethod prepare-access-token-request
   "authorization_code" [request endpoint params]
   (merge-with merge request
-              {:body {:code
-                      (:code params)
-                      :redirect_uri
-                      (:redirect-uri endpoint)}}))
+              {:body {:code         (:code params)
+                      :redirect_uri (:redirect-uri endpoint)}}))
+
+(defmethod prepare-access-token-request
+  "refresh_token" [request endpoint params]
+  (merge-with merge request
+              {:body {:refresh_token (:refresh-token params)}}))
 
 (defmethod prepare-access-token-request
   "password" [request endpoint params]
@@ -52,24 +57,17 @@
 (defn- add-client-authentication [request endpoint]
   (let [{:keys [client-id client-secret authorization-header?]} endpoint]
     (if authorization-header?
-      (add-base64-auth-header
-       request
-       "Basic"
-       (str client-id ":" client-secret))
-      (merge-with
-       merge
-       request
-       {:body
-        {:client_id client-id
-         :client_secret client-secret}}))))
+      (add-base64-auth-header request "Basic" (str client-id ":" client-secret))
+      (merge-with merge request
+                  {:body {:client_id     client-id
+                          :client_secret client-secret}}))))
 
 (defn- request-access-token
   [endpoint params]
   (let [{:keys [access-token-uri access-query-param grant-type]} endpoint
-        request
-        {:content-type "application/x-www-form-urlencoded"
-         :throw-exceptions false
-         :body {:grant_type grant-type}}
+        request {:content-type "application/x-www-form-urlencoded"
+                 :throw-exceptions false
+                 :body {:grant_type grant-type}}
         request (prepare-access-token-request request endpoint params)
         request (add-client-authentication request endpoint)
         request (update-in request [:body] uri/form-url-encode)
@@ -80,7 +78,8 @@
                           (.startsWith content-type "text/javascript"))) ; Facebookism
                (read-json body)
                (uri/form-url-decode body)) ; Facebookism
-        error (:error body)]
+        error (:error body)
+        refresh-token (:refresh_token body)]
     (if (or error (not= status 200))
       (throw (OAuth2Exception. (if error
                                  (if (string? error)
@@ -90,29 +89,44 @@
                                (if error
                                  (if (string? error)
                                    error
-                                   (:type error)) ; Facebookism 
+                                   (:type error)) ; Facebookism
                                  "unknown")))
-      {:access-token (:access_token body)
-       :token-type (or (:token_type body) "draft-10") ; Force.com
-       :query-param access-query-param
-       :params (dissoc body :access_token :token_type)})))
+      (-> {:access-token (:access_token body)
+           :token-type (or (:token_type body) "draft-10") ; Force.com
+           :query-param access-query-param
+           :params (dissoc body :access_token :refresh_token :token_type)}
+        (merge (if refresh-token {:refresh-token refresh-token}))))))
 
 (defn get-access-token
-  [endpoint 
-   & [params {expected-state :state expected-scope :scope}]]
+  [endpoint & [params {expected-state :state expected-scope :scope}]]
   (let [{:keys [state error]} params]
-    (cond (string? error)
-          (throw (OAuth2Exception. (:error_description params) error))
-          (and expected-state (not (= state expected-state)))
-          (throw (OAuth2StateMismatchException.
-                  (format "Expected state %s but got %s"
-                          state expected-state)
-                  state
-                  expected-state))
-          :else
-          (request-access-token endpoint params))))
+    (cond
+      (string? error)
+        (throw (OAuth2Exception. (:error_description params) error))
+      (and expected-state (not (= state expected-state)))
+        (throw (OAuth2StateMismatchException.
+                (format "Expected state %s but got %s"
+                        state expected-state)
+                state
+                expected-state))
+      :else
+        (request-access-token endpoint params))))
 
-(defn with-access-token [uri {:keys [access-token query-param]}]
+(defn refresh-access-token
+  "Function to take the existing `refresh-token` and configuration data
+  and refresh this token to make sure that we have a valid token to work
+  with."
+  [endpoint token]
+  (let [{:keys [refresh-token]} token]
+    (cond
+      (nil? refresh-token)
+        (throw (OAuth2Exception. (format "No :refresh-token in %s" token)))
+      :else
+        (-> (request-access-token (assoc endpoint :grant-type "refresh_token") token)
+          (assoc :refresh-token refresh-token)))))
+
+(defn with-access-token
+  [uri {:keys [access-token query-param]}]
   (str (uri/make (assoc-in (uri/uri->map (uri/make uri) true)
                            [:query query-param]
                            access-token))))

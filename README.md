@@ -10,7 +10,9 @@ implementations such as Facebook to be practical.
 
 clj-oauth2 wraps clj-http for accessing protected resources.
 
-## Basic Usage
+Check CHANGELOG.md for release notes.
+
+## Basic Facebook Usage
 
 ```clojure
 (:require [clj-oauth2.client :as oauth2])
@@ -38,6 +40,48 @@ clj-oauth2 wraps clj-http for accessing protected resources.
 
 ;; access protected resource
 (oauth2/get "https://graph.facebook.com/me" {:oauth2 access-token})
+```
+
+## Basic Google Usage
+
+```clojure
+(:require [clj-oauth2.client :as oauth2])
+
+(def google-oauth2
+  {:authorization-uri "https://accounts.google.com/o/oauth2/auth"
+   :access-token-uri "https://accounts.google.com/o/oauth2/token"
+   :redirect-uri "http://example.com/oauth2-callback"
+   :client-id "1234567890"
+   :client-secret "0987654321"
+   :access-query-param :access_token
+   :scope ["https://www.googleapis.com/auth/dfareporting"
+           "https://www.googleapis.com/auth/devstorage.read_only"
+           "https://www.googleapis.com/auth/dfatrafficking"]
+   :grant-type "authorization_code"
+   :approval-prompt "force"
+   :access-type "offline"})
+
+;; redirect user to (:uri auth-req) afterwards
+(def auth-req
+  (oauth2/make-auth-request google-oauth2))
+
+
+;; auth-resp is a keyword map of the query parameters added to the
+;; redirect-uri by the authorization server
+;; e.g. {:code "abc123"}
+(def access-token
+  (oauth2/get-access-token google-oauth2 auth-resp auth-req))
+
+;; get list of user profiles for this Google (DFA) account
+(oauth2/get
+  "https://www.googleapis.com/dfareporting/v2.0/userprofiles"
+  {:oauth2 access-token})
+
+;; refresh an expired access-token - NOTE: it has to contain the
+;; :refresh-token that Google provides in the `get-access-token`
+;; function!
+(oauth2/refresh-access-token google-oauth2 access-token)
+
 ```
 
 ## Ring Middleware
@@ -71,10 +115,10 @@ clj-oauth2 wraps clj-http for accessing protected resources.
  (defroutes handler
    ; Just do a 'describe' on the Account object and dump the resulting
    ; output
-   (GET "/" 
-     {params :params session :session oauth :oauth} 
-       (let [url (str 
-                   (:instance_url (:params oauth)) 
+   (GET "/"
+     {params :params session :session oauth :oauth}
+       (let [url (str
+                   (:instance_url (:params oauth))
                    "/services/data/v24.0/sobjects/Account/describe/")
              response (oauth2/get url {:oauth2 oauth})]
         {:headers {"Content-type" "text/plain; charset=UTF-8"}
@@ -83,10 +127,10 @@ clj-oauth2 wraps clj-http for accessing protected resources.
    (route/not-found "Page not found"))
 
  ; Set up the wrappers
- (def app 
-    (-> handler 
+ (def app
+    (-> handler
         (wrap-oauth2 force-com-oauth2)
-        wrap-session 
+        wrap-session
         wrap-keyword-params
         wrap-params))
 
