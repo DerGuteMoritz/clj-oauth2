@@ -122,7 +122,8 @@
       (nil? refresh-token)
         (throw (OAuth2Exception. (format "No :refresh-token in %s" token)))
       :else
-        (request-access-token (assoc endpoint :grant-type "refresh_token") token))))
+        (-> (request-access-token (assoc endpoint :grant-type "refresh_token") token)
+          (assoc :refresh-token refresh-token)))))
 
 (defn with-access-token
   [uri {:keys [access-token query-param]}]
