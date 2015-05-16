@@ -118,7 +118,8 @@ create a vector of values."
         oauth2-url-params (or (get oauth2-url-vector 1) "")
         encoding (or (:character-encoding request) "UTF-8")]
     (and (= oauth2-uri (request-uri request oauth2-params))
-         (submap? (keyify-params (parse-params oauth2-url-params encoding)) (:params request)))))
+         (submap? (keyify-params (parse-params oauth2-url-params encoding))
+                  (keyify-params (:params request))))))
 
 ;; This Ring wrapper acts as a filter, ensuring that the user has an OAuth
 ;; token for all but a set of explicitly excluded URLs. The response from
@@ -136,11 +137,11 @@ create a vector of values."
         ;; it in the response and redirect to the originally requested URL
         (let [response {:status 302
                         :headers {"Location" ((:get-target oauth2-params) request)}}
-              oauth2-data (oauth2/get-access-token 
-                           oauth2-params 
-                           (:params request) 
-                           (oauth2/make-auth-request 
-                            oauth2-params 
+              oauth2-data (oauth2/get-access-token
+                           oauth2-params
+                           (keyify-params (:params request))
+                           (oauth2/make-auth-request
+                            oauth2-params
                             ((:get-state oauth2-params) request)))]
           ((:put-oauth2-data oauth2-params) request response oauth2-data))
         ;; We're not handling the callback
