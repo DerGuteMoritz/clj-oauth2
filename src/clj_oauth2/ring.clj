@@ -115,7 +115,7 @@ create a vector of values."
   "Returns true if this is a request to the callback URL"
   (let [oauth2-url-vector (string/split (.toString (java.net.URI. (:redirect-uri oauth2-params))) #"\?")
         oauth2-uri (nth oauth2-url-vector 0)
-        oauth2-url-params (nth oauth2-url-vector 1)
+        oauth2-url-params (nth oauth2-url-vector 1 "")
         encoding (or (:character-encoding request) "UTF-8")]
     (and (= oauth2-uri (request-uri request oauth2-params))
          (submap? (keyify-params (parse-params oauth2-url-params encoding)) (:params request)))))
